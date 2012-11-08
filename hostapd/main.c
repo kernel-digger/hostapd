@@ -552,6 +552,7 @@ static const char * hostapd_msg_ifname_cb(void *ctx)
 
 int main(int argc, char *argv[])
 {
+	/* 局部变量，记录接口信息指针 */
 	struct hapd_interfaces interfaces;
 	int ret = 1;
 	size_t i;
