@@ -1,4 +1,8 @@
 hostapd
 =======
 
-hostapd浠ｇ爜闃呰
+hostapd代码阅读
+
+基于http://hostap.epitest.fi/hostapd/
+代码hostapd-1.0
+
