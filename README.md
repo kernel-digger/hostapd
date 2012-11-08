@@ -2,9 +2,9 @@ hostapd
 =======
 
 
-hostapd代码阅读
+hostapd浠ｇ爜闃呰
 
-基于http://hostap.epitest.fi/hostapd/
-代码hostapd-1.0
+鍩轰簬http://hostap.epitest.fi/hostapd/
+浠ｇ爜hostapd-1.0
 
 
