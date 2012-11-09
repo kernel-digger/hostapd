@@ -564,6 +564,7 @@ int main(int argc, char *argv[])
 	if (os_program_init())
 		return -1;
 
+	/* 解析命令行参数 */
 	for (;;) {
 		c = getopt(argc, argv, "Bde:f:hKP:tv");
 		if (c < 0)
