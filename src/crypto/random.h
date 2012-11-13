@@ -12,8 +12,16 @@
  * See README and COPYING for more details.
  */
 
+/* 随机数生成器 */
+
 #ifndef RANDOM_H
 #define RANDOM_H
+
+/*
+使用hostapd自己维护的随机数生成器
+可以在配置文件.config中使用CONFIG_NO_RANDOM_POOL关闭
+参考defconfig文件中的说明
+*/
 
 #ifdef CONFIG_NO_RANDOM_POOL
 #define random_init(e) do { } while (0)

@@ -48,6 +48,10 @@
 #define EXTRACT_LEN 16
 #define MIN_READY_MARK 2
 
+/*
+随机数池
+POOL_WORDS个u32数
+*/
 static u32 pool[POOL_WORDS];
 static unsigned int input_rotate = 0;
 static unsigned int pool_pos = 0;
@@ -75,6 +79,9 @@ static u32 __ROL32(u32 x, u32 y)
 }
 
 
+/*
+使用@buf混淆随机数池pool
+*/
 static void random_mix_pool(const void *buf, size_t len)
 {
 	static const u32 twist[8] = {
@@ -128,6 +135,12 @@ static void random_extract(u8 *out)
 }
 
 
+/*
+使用@buf中的数据为随机数池pool增加随机性
+
+@buf	: 缓冲区
+@len	: @buf长度
+*/
 void random_add_randomness(const void *buf, size_t len)
 {
 	struct os_time t;
@@ -144,6 +157,7 @@ void random_add_randomness(const void *buf, size_t len)
 		return;
 	}
 
+	/* 当前时间 */
 	os_get_time(&t);
 	wpa_hexdump_key(MSG_EXCESSIVE, "random pool",
 			(const u8 *) pool, sizeof(pool));
@@ -320,6 +334,10 @@ static void random_read_fd(int sock, void *eloop_ctx, void *sock_ctx)
 #endif /* __linux__ */
 
 
+/*
+读取墒池文件内容
+为随机数池pool增加随机性
+*/
 static void random_read_entropy(void)
 {
 	char *buf;
@@ -328,6 +346,7 @@ static void random_read_entropy(void)
 	if (!random_entropy_file)
 		return;
 
+	/* 读取墒池文件 */
 	buf = os_readfile(random_entropy_file, &len);
 	if (buf == NULL)
 		return; /* entropy file not yet available */
@@ -340,6 +359,7 @@ static void random_read_entropy(void)
 	}
 
 	own_pool_ready = (u8) buf[0];
+	/* 为随机数池pool增加随机性 */
 	random_add_randomness(buf + 1, RANDOM_ENTROPY_SIZE);
 	random_entropy_file_read = 1;
 	os_free(buf);
@@ -389,10 +409,12 @@ static void random_write_entropy(void)
 void random_init(const char *entropy_file)
 {
 	os_free(random_entropy_file);
+	/* 随机数墒池文件 */
 	if (entropy_file)
 		random_entropy_file = os_strdup(entropy_file);
 	else
 		random_entropy_file = NULL;
+	/* 读取墒池文件内容 */
 	random_read_entropy();
 
 #ifdef __linux__

@@ -420,6 +420,7 @@ static int hostapd_global_init(struct hapd_interfaces *interfaces,
 		return -1;
 	}
 
+	/* 随机数生成器初始化 */
 	random_init(entropy_file);
 
 #ifndef CONFIG_NATIVE_WINDOWS
