@@ -30,6 +30,11 @@ int eap_server_register_methods(void)
 {
 	int ret = 0;
 
+/* 这些EAP_SERVER_*宏
+   在Makefile中根据.config文件中的CONFIG_EAP_*配置
+   进行相应的使用-D进行定义
+*/
+
 #ifdef EAP_SERVER_IDENTITY
 	if (ret == 0)
 		ret = eap_server_identity_register();

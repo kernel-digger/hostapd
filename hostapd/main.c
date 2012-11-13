@@ -402,10 +402,13 @@ static int hostapd_global_init(struct hapd_interfaces *interfaces,
 {
 	int i;
 
+	/* 结构清0 */
 	os_memset(&global, 0, sizeof(global));
 
+	/* 注册日志回调函数 */
 	hostapd_logger_register_cb(hostapd_logger_cb);
 
+	/* 注册EAP方法 */
 	if (eap_server_register_methods()) {
 		wpa_printf(MSG_ERROR, "Failed to register EAP methods");
 		return -1;
