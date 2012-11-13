@@ -120,7 +120,9 @@ static void eloop_trace_sock_remove_ref(struct eloop_sock_table *table)
 
 int eloop_init(void)
 {
+	/* 结构清0 */
 	os_memset(&eloop, 0, sizeof(eloop));
+	/* 超时双链表初始化 */
 	dl_list_init(&eloop.timeout);
 #ifdef WPA_TRACE
 	signal(SIGSEGV, eloop_sigsegv_handler);

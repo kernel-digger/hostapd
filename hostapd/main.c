@@ -414,6 +414,7 @@ static int hostapd_global_init(struct hapd_interfaces *interfaces,
 		return -1;
 	}
 
+	/* 事件循环初始化 */
 	if (eloop_init()) {
 		wpa_printf(MSG_ERROR, "Failed to initialize event loop");
 		return -1;
