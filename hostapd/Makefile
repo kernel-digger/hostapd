@@ -13,6 +13,8 @@ CFLAGS += -I../src/utils
 # directory if your C library does not include all header files.
 # CFLAGS += -DUSE_KERNEL_HEADERS -I/usr/src/linux/include
 
+# 包含.config文件
+
 -include .config
 
 ifndef CONFIG_OS
@@ -190,6 +192,7 @@ else
 OBJS += ../src/l2_packet/l2_packet_none.o
 endif
 
+# 下面这些CONFIG_EAP_*在.config文件中进行定义配置
 
 ifdef CONFIG_EAP_MD5
 CFLAGS += -DEAP_SERVER_MD5
@@ -779,6 +782,8 @@ endif
 %.o: %.c
 	$(Q)$(CC) -c -o $@ $(CFLAGS) $<
 	@$(E) "  CC " $<
+
+# 先检查配置文件.config是否存在
 
 verify_config:
 	@if [ ! -r .config ]; then \
