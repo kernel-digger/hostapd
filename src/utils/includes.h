@@ -16,6 +16,10 @@
  * having to have OS/C library specific selection in many files.
  */
 
+/*
+默认包含的头文件
+*/
+
 #ifndef INCLUDES_H
 #define INCLUDES_H
 
