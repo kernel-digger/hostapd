@@ -656,6 +656,7 @@ int main(int argc, char *argv[])
 		return -1;
 	}
 
+	/* 初始化全局数据 */
 	if (hostapd_global_init(&interfaces, entropy_file))
 		return -1;
 
