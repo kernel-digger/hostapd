@@ -437,6 +437,7 @@ static int hostapd_global_init(struct hapd_interfaces *interfaces,
 	eloop_register_signal_terminate(handle_term, interfaces);
 
 #ifndef CONFIG_NATIVE_WINDOWS
+	/* ´ò¿ªsyslog */
 	openlog("hostapd", 0, LOG_DAEMON);
 #endif /* CONFIG_NATIVE_WINDOWS */
 
