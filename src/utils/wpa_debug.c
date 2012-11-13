@@ -367,22 +367,30 @@ int wpa_debug_reopen_file(void)
 int wpa_debug_open_file(const char *path)
 {
 #ifdef CONFIG_DEBUG_FILE
+	/* 没指定日志文件路径，直接返回 */
 	if (!path)
 		return 0;
 
+	/* 路径保存到last_path */
 	if (last_path == NULL || os_strcmp(last_path, path) != 0) {
 		/* Save our path to enable re-open */
 		os_free(last_path);
+		/* 复制路径 */
 		last_path = os_strdup(path);
 	}
 
+	/* 追加方式打开文件 */
 	out_file = fopen(path, "a");
+	/* 打开失败 */
 	if (out_file == NULL) {
 		wpa_printf(MSG_ERROR, "wpa_debug_open_file: Failed to open "
 			   "output file, using standard output");
 		return -1;
 	}
 #ifndef _WIN32
+	/* 设置为行缓冲模式
+	   也可以使用setlinebuf(FILE *stream)函数
+	*/
 	setvbuf(out_file, NULL, _IOLBF, 0);
 #endif /* _WIN32 */
 #endif /* CONFIG_DEBUG_FILE */

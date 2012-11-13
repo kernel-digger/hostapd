@@ -627,6 +627,7 @@ int main(int argc, char *argv[])
 
 	wpa_msg_register_ifname_cb(hostapd_msg_ifname_cb);
 
+	/* 日志文件路径 */
 	if (log_file)
 		wpa_debug_open_file(log_file);
 
