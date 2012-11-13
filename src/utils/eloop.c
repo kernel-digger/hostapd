@@ -12,6 +12,8 @@
  * See README and COPYING for more details.
  */
 
+/* 基于select()的事件循环 */
+
 #include "includes.h"
 
 #include "common.h"
@@ -20,6 +22,7 @@
 #include "eloop.h"
 
 
+/* 监听的socket */
 struct eloop_sock {
 	int sock;
 	void *eloop_data;
@@ -30,17 +33,22 @@ struct eloop_sock {
 	WPA_TRACE_INFO
 };
 
+/* 定时器 */
 struct eloop_timeout {
+	/* 组成双链表 */
 	struct dl_list list;
+	/* 到期时间 */
 	struct os_time time;
 	void *eloop_data;
 	void *user_data;
+	/* 处理函数 */
 	eloop_timeout_handler handler;
 	WPA_TRACE_REF(eloop);
 	WPA_TRACE_REF(user);
 	WPA_TRACE_INFO
 };
 
+/* 信号处理 */
 struct eloop_signal {
 	int sig;
 	void *user_data;
@@ -48,12 +56,16 @@ struct eloop_signal {
 	int signaled;
 };
 
+/* socket数组 */
 struct eloop_sock_table {
+	/* 动态分配的struct eloop_sock结构体个数 */
 	int count;
+	/* 指向动态分配的结构空间 */
 	struct eloop_sock *table;
 	int changed;
 };
 
+/* 事件循环数据维护 */
 struct eloop_data {
 	int max_sock;
 
@@ -61,6 +73,7 @@ struct eloop_data {
 	struct eloop_sock_table writers;
 	struct eloop_sock_table exceptions;
 
+	/* 定时器链表 */
 	struct dl_list timeout;
 
 	int signal_count;
