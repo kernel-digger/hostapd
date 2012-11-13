@@ -50,8 +50,11 @@ struct eloop_timeout {
 
 /* 信号处理 */
 struct eloop_signal {
+	/* 信号 */
 	int sig;
+	/* 处理函数的参数 */
 	void *user_data;
+	/* 处理函数 */
 	eloop_signal_handler handler;
 	int signaled;
 };
@@ -76,8 +79,11 @@ struct eloop_data {
 	/* 定时器链表 */
 	struct dl_list timeout;
 
+	/* 动态分配的struct eloop_signal结构体个数 */
 	int signal_count;
+	/* 动态分配的struct eloop_signal结构体空间 */
 	struct eloop_signal *signals;
+	/* 统计信号触发的数量 */
 	int signaled;
 	int pending_terminate;
 
@@ -426,18 +432,25 @@ static void eloop_handle_signal(int sig)
 	int i;
 
 #ifndef CONFIG_NATIVE_WINDOWS
+	/* 进程退出信号处理 */
 	if ((sig == SIGINT || sig == SIGTERM) && !eloop.pending_terminate) {
 		/* Use SIGALRM to break out from potential busy loops that
 		 * would not allow the program to be killed. */
 		eloop.pending_terminate = 1;
+		/* 注册SIGALRM信号 */
 		signal(SIGALRM, eloop_handle_alarm);
+		/* 2秒后退出 */
 		alarm(2);
 	}
 #endif /* CONFIG_NATIVE_WINDOWS */
 
+	/* 统计 */
 	eloop.signaled++;
+	/* 遍历信号表 */
 	for (i = 0; i < eloop.signal_count; i++) {
+		/* 信号一致 */
 		if (eloop.signals[i].sig == sig) {
+			/* 标记该信号被触发 */
 			eloop.signals[i].signaled++;
 			break;
 		}
@@ -470,11 +483,15 @@ static void eloop_process_pending_signals(void)
 }
 
 
+/*
+注册信号处理函数到事件循环信号表中
+*/
 int eloop_register_signal(int sig, eloop_signal_handler handler,
 			  void *user_data)
 {
 	struct eloop_signal *tmp;
 
+	/* 扩充空间 */
 	tmp = (struct eloop_signal *)
 		os_realloc(eloop.signals,
 			   (eloop.signal_count + 1) *
@@ -488,6 +505,9 @@ int eloop_register_signal(int sig, eloop_signal_handler handler,
 	tmp[eloop.signal_count].signaled = 0;
 	eloop.signal_count++;
 	eloop.signals = tmp;
+	/* 注册信号处理函数
+	   都为eloop_handle_signal
+	*/
 	signal(sig, eloop_handle_signal);
 
 	return 0;

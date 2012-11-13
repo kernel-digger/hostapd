@@ -397,6 +397,10 @@ static void handle_dump_state(int sig, void *signal_ctx)
 #endif /* CONFIG_NATIVE_WINDOWS */
 
 
+/*
+@interfaces	: 配置的接口
+@entropy_file	: 墒池文件
+*/
 static int hostapd_global_init(struct hapd_interfaces *interfaces,
 			       const char *entropy_file)
 {
@@ -424,9 +428,12 @@ static int hostapd_global_init(struct hapd_interfaces *interfaces,
 	random_init(entropy_file);
 
 #ifndef CONFIG_NATIVE_WINDOWS
+	/* 使用SIGHUP信号重读配置文件 */
 	eloop_register_signal(SIGHUP, handle_reload, interfaces);
+	/* 使用SIGUSR1信号触发打印状态信息 */
 	eloop_register_signal(SIGUSR1, handle_dump_state, interfaces);
 #endif /* CONFIG_NATIVE_WINDOWS */
+	/* 使用SIGINT和SIGTERM信号标记事件循环终止 */
 	eloop_register_signal_terminate(handle_term, interfaces);
 
 #ifndef CONFIG_NATIVE_WINDOWS
