@@ -63,6 +63,9 @@ extern struct wpa_driver_ops wpa_driver_none_ops; /* driver_none.c */
 #endif /* CONFIG_DRIVER_NONE */
 
 
+/*
+WPA驱动的处理函数表
+*/
 struct wpa_driver_ops *wpa_drivers[] =
 {
 #ifdef CONFIG_DRIVER_WEXT

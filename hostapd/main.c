@@ -441,12 +441,14 @@ static int hostapd_global_init(struct hapd_interfaces *interfaces,
 	openlog("hostapd", 0, LOG_DAEMON);
 #endif /* CONFIG_NATIVE_WINDOWS */
 
+	/* 统计驱动个数 */
 	for (i = 0; wpa_drivers[i]; i++)
 		global.drv_count++;
 	if (global.drv_count == 0) {
 		wpa_printf(MSG_ERROR, "No drivers enabled");
 		return -1;
 	}
+	/* 分配驱动私有数据指针 */
 	global.drv_priv = os_zalloc(global.drv_count * sizeof(void *));
 	if (global.drv_priv == NULL)
 		return -1;
