@@ -636,7 +636,12 @@ int main(int argc, char *argv[])
 		}
 	}
 
-	/* 没带配置文件路径 */
+	/* 没带配置文件路径
+	   getopt()函数解析完命令行参数后
+	   会根据参数解析情况调整命令行参数指针数组顺序
+	   optind表示解析完的参数个数
+	   剩下未解析的作为配置文件
+	*/
 	if (optind == argc)
 		usage();
 
@@ -662,6 +667,7 @@ int main(int argc, char *argv[])
 
 	/* Initialize interfaces */
 	for (i = 0; i < interfaces.count; i++) {
+		/* 根据配置文件初始化接口 */
 		interfaces.iface[i] = hostapd_interface_init(&interfaces,
 							     argv[optind + i],
 							     debug);
