@@ -557,8 +557,11 @@ int main(int argc, char *argv[])
 	int ret = 1;
 	size_t i;
 	int c, debug = 0, daemonize = 0;
+	/* 记录pid号的文件 */
 	char *pid_file = NULL;
+	/* 命令行参数配置的日志文件 */
 	const char *log_file = NULL;
+	/* 随机数墒池文件 */
 	const char *entropy_file = NULL;
 
 	if (os_program_init())
@@ -570,44 +573,55 @@ int main(int argc, char *argv[])
 		if (c < 0)
 			break;
 		switch (c) {
+		/* 帮助参数 */
 		case 'h':
 			usage();
 			break;
+		/* 调试等级，每个d减一个等级 */
 		case 'd':
 			debug++;
 			if (wpa_debug_level > 0)
 				wpa_debug_level--;
 			break;
+		/* 后台运行 */
 		case 'B':
 			daemonize++;
 			break;
+		/* 墒池 */
 		case 'e':
 			entropy_file = optarg;
 			break;
+		/* 日志文件 */
 		case 'f':
 			log_file = optarg;
 			break;
+		/* 调试信息打印密钥 */
 		case 'K':
 			wpa_debug_show_keys++;
 			break;
+		/* pid文件 */
 		case 'P':
 			os_free(pid_file);
 			pid_file = os_rel2abs_path(optarg);
 			break;
+		/* 日志中加上时间戳 */
 		case 't':
 			wpa_debug_timestamp++;
 			break;
+		/* 显示版本号 */
 		case 'v':
 			show_version();
 			exit(1);
 			break;
 
+		/* 未知参数 */
 		default:
 			usage();
 			break;
 		}
 	}
 
+	/* 没带配置文件路径 */
 	if (optind == argc)
 		usage();
 
@@ -616,7 +630,9 @@ int main(int argc, char *argv[])
 	if (log_file)
 		wpa_debug_open_file(log_file);
 
+	/* 配置文件的个数表示无线网卡的个数 */
 	interfaces.count = argc - optind;
+	/* 分配接口信息指针数组空间 */
 	interfaces.iface = os_zalloc(interfaces.count *
 				     sizeof(struct hostapd_iface *));
 	if (interfaces.iface == NULL) {
