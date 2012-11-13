@@ -12,6 +12,10 @@
  * See README and COPYING for more details.
  */
 
+/*
+操作系统相关的一些函数
+*/
+
 #include "includes.h"
 
 #include <time.h>
@@ -213,12 +217,16 @@ unsigned long os_random(void)
 }
 
 
+/*
+相对路径转换为绝对路径
+*/
 char * os_rel2abs_path(const char *rel_path)
 {
 	char *buf = NULL, *cwd, *ret;
 	size_t len = 128, cwd_len, rel_len, ret_len;
 	int last_errno;
 
+	/* '/'开头，绝对路径 */
 	if (rel_path[0] == '/')
 		return os_strdup(rel_path);
 
@@ -226,12 +234,16 @@ char * os_rel2abs_path(const char *rel_path)
 		buf = os_malloc(len);
 		if (buf == NULL)
 			return NULL;
+		/* 当前工作目录的绝对路径 */
 		cwd = getcwd(buf, len);
 		if (cwd == NULL) {
+			/* 记录错误码 */
 			last_errno = errno;
 			os_free(buf);
 			if (last_errno != ERANGE)
 				return NULL;
+			/* 错误码为ERANGE
+			   buf太小，扩大buf空间，循环重新分配空间取路径 */
 			len *= 2;
 			if (len > 2000)
 				return NULL;
@@ -241,17 +253,27 @@ char * os_rel2abs_path(const char *rel_path)
 		}
 	}
 
+	/* 绝对路径长度 */
 	cwd_len = os_strlen(cwd);
+	/* 相对路径长度 */
 	rel_len = os_strlen(rel_path);
+	/* 加一个'/'和字符串结尾符'\0' */
 	ret_len = cwd_len + 1 + rel_len + 1;
+	/* 分配拼装成的绝对路径空间 */
 	ret = os_malloc(ret_len);
 	if (ret) {
+		/* 复制当前工作目录的绝对路径 */
 		os_memcpy(ret, cwd, cwd_len);
+		/* 加个'/' */
 		ret[cwd_len] = '/';
+		/* 复制相对路径 */
 		os_memcpy(ret + cwd_len + 1, rel_path, rel_len);
+		/* 字符串结束符 */
 		ret[ret_len - 1] = '\0';
 	}
+	/* 释放getcwd使用的空间 */
 	os_free(buf);
+	/* 返回组装好的绝对路径 */
 	return ret;
 }
 
