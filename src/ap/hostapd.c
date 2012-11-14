@@ -302,10 +302,14 @@ static void hostapd_cleanup_iface(struct hostapd_iface *iface)
 }
 
 
+/*
+设置加密方式
+*/
 static int hostapd_setup_encryption(char *iface, struct hostapd_data *hapd)
 {
 	int i;
 
+	/* WEP设置 */
 	hostapd_broadcast_wep_set(hapd);
 
 	if (hapd->conf->ssid.wep.default_len) {
@@ -313,6 +317,7 @@ static int hostapd_setup_encryption(char *iface, struct hostapd_data *hapd)
 		return 0;
 	}
 
+	/* 设置AUTH模式 */
 	/*
 	 * When IEEE 802.1X is not enabled, the driver may need to know how to
 	 * set authentication algorithms for static WEP.
@@ -338,6 +343,9 @@ static int hostapd_setup_encryption(char *iface, struct hostapd_data *hapd)
 }
 
 
+/*
+deauth所有STA
+*/
 static int hostapd_flush_old_stations(struct hostapd_data *hapd, u16 reason)
 {
 	int ret = 0;
@@ -354,6 +362,7 @@ static int hostapd_flush_old_stations(struct hostapd_data *hapd, u16 reason)
 	wpa_printf(MSG_DEBUG, "Deauthenticate all stations");
 	os_memset(addr, 0xff, ETH_ALEN);
 	hostapd_drv_sta_deauth(hapd, addr, reason);
+	/* 释放sta_info */
 	hostapd_free_stas(hapd);
 
 	return ret;
@@ -374,6 +383,7 @@ static int hostapd_validate_bssid_configuration(struct hostapd_iface *iface)
 	unsigned int i = iface->conf->num_bss, bits = 0, j;
 	int auto_addr = 0;
 
+	/* 使用的驱动为none */
 	if (hostapd_drv_none(hapd))
 		return 0;
 
@@ -566,6 +576,7 @@ static int hostapd_setup_bss(struct hostapd_data *hapd, int first)
 			   hapd->conf->ssid.ssid);
 	}
 
+	/* 设置WPA-PSK */
 	if (hostapd_setup_wpa_psk(conf)) {
 		wpa_printf(MSG_ERROR, "WPA-PSK setup failed.");
 		return -1;
@@ -582,6 +593,7 @@ static int hostapd_setup_bss(struct hostapd_data *hapd, int first)
 	if (wpa_debug_level == MSG_MSGDUMP)
 		conf->radius->msg_dumps = 1;
 #ifndef CONFIG_NO_RADIUS
+	/* RADIUS客户端初始化 */
 	hapd->radius = radius_client_init(hapd, conf->radius);
 	if (hapd->radius == NULL) {
 		wpa_printf(MSG_ERROR, "RADIUS client initialization failed.");
@@ -667,6 +679,7 @@ static int setup_interface(struct hostapd_iface *iface)
 	size_t i;
 	char country[4];
 
+	/* 同一个接口下所有的bss使用相同的驱动 */
 	/*
 	 * Make sure that all BSSes get configured with a pointer to the same
 	 * driver interface.
@@ -679,6 +692,7 @@ static int setup_interface(struct hostapd_iface *iface)
 	if (hostapd_validate_bssid_configuration(iface))
 		return -1;
 
+	/* 设置国家码 */
 	if (hapd->iconf->country[0] && hapd->iconf->country[1]) {
 		os_memcpy(country, hapd->iconf->country, 3);
 		country[3] = '\0';
@@ -724,6 +738,7 @@ int hostapd_setup_interface_complete(struct hostapd_iface *iface, int err)
 	}
 
 	wpa_printf(MSG_DEBUG, "Completing interface initialization");
+	/* 设置信道 */
 	if (hapd->iconf->channel) {
 		iface->freq = hostapd_hw_get_freq(hapd, hapd->iconf->channel);
 		wpa_printf(MSG_DEBUG, "Mode: %s  Channel: %d  "

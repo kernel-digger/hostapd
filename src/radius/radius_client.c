@@ -158,11 +158,13 @@ struct radius_msg_list {
  * calls to other functions as an identifier for the RADIUS client instance.
  */
 struct radius_client_data {
+	/* 指向所属的struct hostapd_data */
 	/**
 	 * ctx - Context pointer for hostapd_logger() callbacks
 	 */
 	void *ctx;
 
+	/* 指向struct hostapd_bss_config中的RADIUS配置 */
 	/**
 	 * conf - RADIUS client configuration (list of RADIUS servers to use)
 	 */

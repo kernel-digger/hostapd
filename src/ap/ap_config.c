@@ -305,6 +305,7 @@ int hostapd_setup_wpa_psk(struct hostapd_bss_config *conf)
 {
 	struct hostapd_ssid *ssid = &conf->ssid;
 
+	/* 根据wpa_passphrase生成PSK */
 	if (ssid->wpa_passphrase != NULL) {
 		if (ssid->wpa_psk != NULL) {
 			wpa_printf(MSG_DEBUG, "Using pre-configured WPA PSK "
@@ -318,6 +319,7 @@ int hostapd_setup_wpa_psk(struct hostapd_bss_config *conf)
 		ssid->wpa_psk->group = 1;
 	}
 
+	/* 读取PSK */
 	if (ssid->wpa_psk_file) {
 		if (hostapd_config_read_wpa_psk(ssid->wpa_psk_file,
 						&conf->ssid))

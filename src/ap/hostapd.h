@@ -59,7 +59,7 @@ struct hostapd_data {
 	struct hostapd_bss_config *conf;
 	int interface_added; /* virtual interface added for this BSS */
 
-	/* 接口的MAC地址 */
+	/* 无线网卡接口的MAC地址 */
 	u8 own_addr[ETH_ALEN];
 
 	int num_sta; /* number of entries in sta_list */
