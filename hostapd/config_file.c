@@ -1192,6 +1192,7 @@ struct hostapd_config * hostapd_config_read(const char *fname)
 	int pairwise;
 	size_t i;
 
+	/* 只读打开配置文件 */
 	f = fopen(fname, "r");
 	if (f == NULL) {
 		wpa_printf(MSG_ERROR, "Could not open configuration file '%s' "
@@ -1199,12 +1200,14 @@ struct hostapd_config * hostapd_config_read(const char *fname)
 		return NULL;
 	}
 
+	/* 创建hostapd_config并置默认值 */
 	conf = hostapd_config_defaults();
 	if (conf == NULL) {
 		fclose(f);
 		return NULL;
 	}
 
+	/* 置wpa驱动第一项为默认驱动 */
 	/* set default driver based on configuration */
 	conf->driver = wpa_drivers[0];
 	if (conf->driver == NULL) {
@@ -1214,15 +1217,20 @@ struct hostapd_config * hostapd_config_read(const char *fname)
 		return NULL;
 	}
 
+	/* 初始从第一个bss开始 */
 	bss = conf->last_bss = conf->bss;
 
+	/* 逐行解析配置文件 */
 	while (fgets(buf, sizeof(buf), f)) {
+		/* 解析的值保存在最后一个bss中 */
 		bss = conf->last_bss;
 		line++;
 
+		/* 跳过注释行 */
 		if (buf[0] == '#')
 			continue;
 		pos = buf;
+		/* 置行字符串结尾 */
 		while (*pos != '\0') {
 			if (*pos == '\n') {
 				*pos = '\0';
@@ -1230,9 +1238,11 @@ struct hostapd_config * hostapd_config_read(const char *fname)
 			}
 			pos++;
 		}
+		/* 跳过空行 */
 		if (buf[0] == '\0')
 			continue;
 
+		/* 参数设置以'='赋值 */
 		pos = os_strchr(buf, '=');
 		if (pos == NULL) {
 			wpa_printf(MSG_ERROR, "Line %d: invalid line '%s'",
@@ -1241,6 +1251,7 @@ struct hostapd_config * hostapd_config_read(const char *fname)
 			continue;
 		}
 		*pos = '\0';
+		/* 指向参数的值 */
 		pos++;
 
 		if (os_strcmp(buf, "interface") == 0) {
