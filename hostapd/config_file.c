@@ -122,6 +122,9 @@ static int hostapd_acl_comp(const void *a, const void *b)
 }
 
 
+/*
+从文件@fname中读取MAC列表
+*/
 static int hostapd_config_read_maclist(const char *fname,
 				       struct mac_acl_entry **acl, int *num)
 {
@@ -135,12 +138,14 @@ static int hostapd_config_read_maclist(const char *fname,
 	if (!fname)
 		return 0;
 
+	/* 只读打开 */
 	f = fopen(fname, "r");
 	if (!f) {
 		wpa_printf(MSG_ERROR, "MAC list file '%s' not found.", fname);
 		return -1;
 	}
 
+	/* 逐行读取 */
 	while (fgets(buf, sizeof(buf), f)) {
 		line++;
 
@@ -157,6 +162,7 @@ static int hostapd_config_read_maclist(const char *fname,
 		if (buf[0] == '\0')
 			continue;
 
+		/* 解析MAC地址 */
 		if (hwaddr_aton(buf, addr)) {
 			wpa_printf(MSG_ERROR, "Invalid MAC address '%s' at "
 				   "line %d in '%s'", buf, line, fname);
@@ -164,6 +170,7 @@ static int hostapd_config_read_maclist(const char *fname,
 			return -1;
 		}
 
+		/* 解析VLAN_ID */
 		vlan_id = 0;
 		pos = buf;
 		while (*pos != '\0' && *pos != ' ' && *pos != '\t')
@@ -173,6 +180,7 @@ static int hostapd_config_read_maclist(const char *fname,
 		if (*pos != '\0')
 			vlan_id = atoi(pos);
 
+		/* 动态扩充空间 */
 		newacl = os_realloc(*acl, (*num + 1) * sizeof(**acl));
 		if (newacl == NULL) {
 			wpa_printf(MSG_ERROR, "MAC list reallocation failed");
@@ -180,14 +188,19 @@ static int hostapd_config_read_maclist(const char *fname,
 			return -1;
 		}
 
+		/* 记录空间地址 */
 		*acl = newacl;
+		/* 复制MAC */
 		os_memcpy((*acl)[*num].addr, addr, ETH_ALEN);
+		/* 记录vlan_id */
 		(*acl)[*num].vlan_id = vlan_id;
+		/* 记录个数 */
 		(*num)++;
 	}
 
 	fclose(f);
 
+	/* 快排，升序排列 */
 	qsort(*acl, *num, sizeof(**acl), hostapd_acl_comp);
 
 	return 0;
@@ -1040,6 +1053,9 @@ static int hostapd_config_ht_capab(struct hostapd_config *conf,
 #endif /* CONFIG_IEEE80211N */
 
 
+/*
+检查bss配置的有效性
+*/
 static int hostapd_config_check_bss(struct hostapd_bss_config *bss,
 				    struct hostapd_config *conf)
 {
@@ -1050,6 +1066,7 @@ static int hostapd_config_check_bss(struct hostapd_bss_config *bss,
 		return -1;
 	}
 
+	/* 检查WPA-PSK配置 */
 	if (bss->wpa && (bss->wpa_key_mgmt & WPA_KEY_MGMT_PSK) &&
 	    bss->ssid.wpa_psk == NULL && bss->ssid.wpa_passphrase == NULL &&
 	    bss->ssid.wpa_psk_file == NULL) {
@@ -1058,6 +1075,7 @@ static int hostapd_config_check_bss(struct hostapd_bss_config *bss,
 		return -1;
 	}
 
+	/* 检查bssid是否重复 */
 	if (hostapd_mac_comp_empty(bss->bssid) != 0) {
 		size_t i;
 
@@ -1123,6 +1141,9 @@ static int hostapd_config_check_bss(struct hostapd_bss_config *bss,
 }
 
 
+/*
+检查bss配置的有效性
+*/
 static int hostapd_config_check(struct hostapd_config *conf)
 {
 	size_t i;
@@ -1254,21 +1275,28 @@ struct hostapd_config * hostapd_config_read(const char *fname)
 		/* 指向参数的值 */
 		pos++;
 
+		/* 无线网卡接口名称 */
 		if (os_strcmp(buf, "interface") == 0) {
 			os_strlcpy(conf->bss[0].iface, pos,
 				   sizeof(conf->bss[0].iface));
+		/* 接口所属的桥 */
 		} else if (os_strcmp(buf, "bridge") == 0) {
 			os_strlcpy(bss->bridge, pos, sizeof(bss->bridge));
+		/* WDS模式下STA使用的桥 */
 		} else if (os_strcmp(buf, "wds_bridge") == 0) {
 			os_strlcpy(bss->wds_bridge, pos,
 				   sizeof(bss->wds_bridge));
+		/* 控制无线/有线接口驱动的操作函数集 */
 		} else if (os_strcmp(buf, "driver") == 0) {
 			int j;
 			/* clear to get error below if setting is invalid */
 			conf->driver = NULL;
+			/* 遍历支持的驱动 */
 			for (j = 0; wpa_drivers[j]; j++) {
+				/* 按名称比较 */
 				if (os_strcmp(pos, wpa_drivers[j]->name) == 0)
 				{
+					/* 置使用的驱动 */
 					conf->driver = wpa_drivers[j];
 					break;
 				}
@@ -1292,19 +1320,26 @@ struct hostapd_config * hostapd_config_read(const char *fname)
 			bss->logger_stdout = atoi(pos);
 		} else if (os_strcmp(buf, "dump_file") == 0) {
 			bss->dump_log_name = os_strdup(pos);
+		/* ssid名称 */
 		} else if (os_strcmp(buf, "ssid") == 0) {
+			/* ssid长度 */
 			bss->ssid.ssid_len = os_strlen(pos);
+			/* 长度有效性判断 */
 			if (bss->ssid.ssid_len > HOSTAPD_MAX_SSID_LEN ||
 			    bss->ssid.ssid_len < 1) {
 				wpa_printf(MSG_ERROR, "Line %d: invalid SSID "
 					   "'%s'", line, pos);
 				errors++;
 			} else {
+				/* 复制ssid */
 				os_memcpy(bss->ssid.ssid, pos,
 					  bss->ssid.ssid_len);
+				/* 置字符串结尾 */
 				bss->ssid.ssid[bss->ssid.ssid_len] = '\0';
+				/* 标记ssid已设置 */
 				bss->ssid.ssid_set = 1;
 			}
+		/* ACL模式 */
 		} else if (os_strcmp(buf, "macaddr_acl") == 0) {
 			bss->macaddr_acl = atoi(pos);
 			if (bss->macaddr_acl != ACCEPT_UNLESS_DENIED &&
@@ -1314,6 +1349,7 @@ struct hostapd_config * hostapd_config_read(const char *fname)
 					   "macaddr_acl %d",
 					   line, bss->macaddr_acl);
 			}
+		/* 允许MAC列表 */
 		} else if (os_strcmp(buf, "accept_mac_file") == 0) {
 			if (hostapd_config_read_maclist(pos, &bss->accept_mac,
 							&bss->num_accept_mac))
@@ -1323,6 +1359,7 @@ struct hostapd_config * hostapd_config_read(const char *fname)
 					   line, pos);
 				errors++;
 			}
+		/* 拒绝MAC列表 */
 		} else if (os_strcmp(buf, "deny_mac_file") == 0) {
 			if (hostapd_config_read_maclist(pos, &bss->deny_mac,
 							&bss->num_deny_mac)) {
@@ -1331,20 +1368,27 @@ struct hostapd_config * hostapd_config_read(const char *fname)
 					   line, pos);
 				errors++;
 			}
+		/* WDS模式 */
 		} else if (os_strcmp(buf, "wds_sta") == 0) {
 			bss->wds_sta = atoi(pos);
+		/* AP上STA隔离 */
 		} else if (os_strcmp(buf, "ap_isolate") == 0) {
 			bss->isolate = atoi(pos);
+		/* STA最大不活动时间 */
 		} else if (os_strcmp(buf, "ap_max_inactivity") == 0) {
 			bss->ap_max_inactivity = atoi(pos);
+		/* 国家码 */
 		} else if (os_strcmp(buf, "country_code") == 0) {
 			os_memcpy(conf->country, pos, 2);
 			/* FIX: make this configurable */
 			conf->country[2] = ' ';
+		/* 使能IEEE 802.11d */
 		} else if (os_strcmp(buf, "ieee80211d") == 0) {
 			conf->ieee80211d = atoi(pos);
+		/* 开启8021x认证 */
 		} else if (os_strcmp(buf, "ieee8021x") == 0) {
 			bss->ieee802_1x = atoi(pos);
+		/* hostapd使用的IEEE 802.1X/EAPOL版本号 */
 		} else if (os_strcmp(buf, "eapol_version") == 0) {
 			bss->eapol_version = atoi(pos);
 			if (bss->eapol_version < 1 ||
@@ -1362,28 +1406,37 @@ struct hostapd_config * hostapd_config_read(const char *fname)
 			wpa_printf(MSG_ERROR, "Line %d: obsolete "
 				   "eap_authenticator used; this has been "
 				   "renamed to eap_server", line);
+		/* 使用hostapd集成的EAP SERVER */
 		} else if (os_strcmp(buf, "eap_server") == 0) {
 			bss->eap_server = atoi(pos);
+		/* 用户数据库 */
 		} else if (os_strcmp(buf, "eap_user_file") == 0) {
 			if (hostapd_config_read_eap_user(pos, bss))
 				errors++;
+		/* CA证书文件路径 */
 		} else if (os_strcmp(buf, "ca_cert") == 0) {
 			os_free(bss->ca_cert);
 			bss->ca_cert = os_strdup(pos);
+		/* 服务端证书文件路径 */
 		} else if (os_strcmp(buf, "server_cert") == 0) {
 			os_free(bss->server_cert);
 			bss->server_cert = os_strdup(pos);
+		/* 服务端私钥文件路径 */
 		} else if (os_strcmp(buf, "private_key") == 0) {
 			os_free(bss->private_key);
 			bss->private_key = os_strdup(pos);
+		/* 私钥文件密码 */
 		} else if (os_strcmp(buf, "private_key_passwd") == 0) {
 			os_free(bss->private_key_passwd);
 			bss->private_key_passwd = os_strdup(pos);
+		/* 检查证书吊销列表 */
 		} else if (os_strcmp(buf, "check_crl") == 0) {
 			bss->check_crl = atoi(pos);
+		/* DH/DSA参数文件路径 */
 		} else if (os_strcmp(buf, "dh_file") == 0) {
 			os_free(bss->dh_file);
 			bss->dh_file = os_strdup(pos);
+		/* EAP报文分片大小 */
 		} else if (os_strcmp(buf, "fragment_size") == 0) {
 			bss->fragment_size = atoi(pos);
 #ifdef EAP_SERVER_FAST
@@ -1430,6 +1483,7 @@ struct hostapd_config * hostapd_config_read(const char *fname)
 			bss->pac_key_refresh_time = atoi(pos);
 #endif /* EAP_SERVER_FAST */
 #ifdef EAP_SERVER_SIM
+		/* EAP SIM数据库 */
 		} else if (os_strcmp(buf, "eap_sim_db") == 0) {
 			os_free(bss->eap_sim_db);
 			bss->eap_sim_db = os_strdup(pos);
@@ -1445,6 +1499,7 @@ struct hostapd_config * hostapd_config_read(const char *fname)
 			bss->pwd_group = atoi(pos);
 #endif /* EAP_SERVER_PWD */
 #endif /* EAP_SERVER */
+		/* EAP Request-Identity报文中携带的信息 */
 		} else if (os_strcmp(buf, "eap_message") == 0) {
 			char *term;
 			bss->eap_req_id_text = os_strdup(pos);
@@ -1494,6 +1549,7 @@ struct hostapd_config * hostapd_config_read(const char *fname)
 					   line, bss->wep_rekeying_period);
 				errors++;
 			}
+		/* EAP重认证周期 */
 		} else if (os_strcmp(buf, "eap_reauth_period") == 0) {
 			bss->eap_reauth_period = atoi(pos);
 			if (bss->eap_reauth_period < 0) {
@@ -1505,20 +1561,24 @@ struct hostapd_config * hostapd_config_read(const char *fname)
 		} else if (os_strcmp(buf, "eapol_key_index_workaround") == 0) {
 			bss->eapol_key_index_workaround = atoi(pos);
 #ifdef CONFIG_IAPP
+		/* IAPP使用的接口名称 */
 		} else if (os_strcmp(buf, "iapp_interface") == 0) {
 			bss->ieee802_11f = 1;
 			os_strlcpy(bss->iapp_iface, pos,
 				   sizeof(bss->iapp_iface));
 #endif /* CONFIG_IAPP */
+		/* NAS-IP-Address */
 		} else if (os_strcmp(buf, "own_ip_addr") == 0) {
 			if (hostapd_parse_ip_addr(pos, &bss->own_ip_addr)) {
 				wpa_printf(MSG_ERROR, "Line %d: invalid IP "
 					   "address '%s'", line, pos);
 				errors++;
 			}
+		/* RADIUS报文中的NAS ID */
 		} else if (os_strcmp(buf, "nas_identifier") == 0) {
 			bss->nas_identifier = os_strdup(pos);
 #ifndef CONFIG_NO_RADIUS
+		/* RADIUS认证服务器IP */
 		} else if (os_strcmp(buf, "auth_server_addr") == 0) {
 			if (hostapd_config_read_radius_addr(
 				    &bss->radius->auth_servers,
@@ -1528,9 +1588,11 @@ struct hostapd_config * hostapd_config_read(const char *fname)
 					   "address '%s'", line, pos);
 				errors++;
 			}
+		/* RADIUS认证服务器端口*/
 		} else if (bss->radius->auth_server &&
 			   os_strcmp(buf, "auth_server_port") == 0) {
 			bss->radius->auth_server->port = atoi(pos);
+		/* RADIUS认证服务器密钥 */
 		} else if (bss->radius->auth_server &&
 			   os_strcmp(buf, "auth_server_shared_secret") == 0) {
 			int len = os_strlen(pos);
@@ -1543,6 +1605,7 @@ struct hostapd_config * hostapd_config_read(const char *fname)
 			bss->radius->auth_server->shared_secret =
 				(u8 *) os_strdup(pos);
 			bss->radius->auth_server->shared_secret_len = len;
+		/* RADIUS记账服务器IP */
 		} else if (os_strcmp(buf, "acct_server_addr") == 0) {
 			if (hostapd_config_read_radius_addr(
 				    &bss->radius->acct_servers,
@@ -1552,9 +1615,11 @@ struct hostapd_config * hostapd_config_read(const char *fname)
 					   "address '%s'", line, pos);
 				errors++;
 			}
+		/* RADIUS记账服务器端口 */
 		} else if (bss->radius->acct_server &&
 			   os_strcmp(buf, "acct_server_port") == 0) {
 			bss->radius->acct_server->port = atoi(pos);
+		/* RADIUS记账服务器密钥 */
 		} else if (bss->radius->acct_server &&
 			   os_strcmp(buf, "acct_server_shared_secret") == 0) {
 			int len = os_strlen(pos);
@@ -1567,13 +1632,16 @@ struct hostapd_config * hostapd_config_read(const char *fname)
 			bss->radius->acct_server->shared_secret =
 				(u8 *) os_strdup(pos);
 			bss->radius->acct_server->shared_secret_len = len;
+		/* 主服务器尝试间隔 */
 		} else if (os_strcmp(buf, "radius_retry_primary_interval") ==
 			   0) {
 			bss->radius->retry_primary_interval = atoi(pos);
+		/* 记账间隔 */
 		} else if (os_strcmp(buf, "radius_acct_interim_interval") == 0)
 		{
 			bss->acct_interim_interval = atoi(pos);
 #endif /* CONFIG_NO_RADIUS */
+		/* 认证算法 */
 		} else if (os_strcmp(buf, "auth_algs") == 0) {
 			bss->auth_algs = atoi(pos);
 			if (bss->auth_algs == 0) {
@@ -1582,6 +1650,7 @@ struct hostapd_config * hostapd_config_read(const char *fname)
 					   line);
 				errors++;
 			}
+		/* 最大STA数量 */
 		} else if (os_strcmp(buf, "max_num_sta") == 0) {
 			bss->max_num_sta = atoi(pos);
 			if (bss->max_num_sta < 0 ||
@@ -1592,16 +1661,22 @@ struct hostapd_config * hostapd_config_read(const char *fname)
 					   MAX_STA_COUNT);
 				errors++;
 			}
+		/* 使能WPA认证 */
 		} else if (os_strcmp(buf, "wpa") == 0) {
 			bss->wpa = atoi(pos);
+		/* 组临时密钥更新周期 */
 		} else if (os_strcmp(buf, "wpa_group_rekey") == 0) {
 			bss->wpa_group_rekey = atoi(pos);
+		/* STA离开时强制更新组播密钥 */
 		} else if (os_strcmp(buf, "wpa_strict_rekey") == 0) {
 			bss->wpa_strict_rekey = atoi(pos);
+		/* 组主密钥更新周期 */
 		} else if (os_strcmp(buf, "wpa_gmk_rekey") == 0) {
 			bss->wpa_gmk_rekey = atoi(pos);
+		/* PTK更新周期 */
 		} else if (os_strcmp(buf, "wpa_ptk_rekey") == 0) {
 			bss->wpa_ptk_rekey = atoi(pos);
+		/* 用于生成WPA-PSK的密钥 */
 		} else if (os_strcmp(buf, "wpa_passphrase") == 0) {
 			int len = os_strlen(pos);
 			if (len < 8 || len > 63) {
@@ -1613,6 +1688,7 @@ struct hostapd_config * hostapd_config_read(const char *fname)
 				os_free(bss->ssid.wpa_passphrase);
 				bss->ssid.wpa_passphrase = os_strdup(pos);
 			}
+		/* 配置的WPA-PSK */
 		} else if (os_strcmp(buf, "wpa_psk") == 0) {
 			os_free(bss->ssid.wpa_psk);
 			bss->ssid.wpa_psk =
@@ -1628,6 +1704,7 @@ struct hostapd_config * hostapd_config_read(const char *fname)
 			} else {
 				bss->ssid.wpa_psk->group = 1;
 			}
+		/* 含有WPA-PSK的文件 */
 		} else if (os_strcmp(buf, "wpa_psk_file") == 0) {
 			os_free(bss->ssid.wpa_psk_file);
 			bss->ssid.wpa_psk_file = os_strdup(pos);
@@ -1636,11 +1713,13 @@ struct hostapd_config * hostapd_config_read(const char *fname)
 					   "failed", line);
 				errors++;
 			}
+		/* 密钥管理算法 */
 		} else if (os_strcmp(buf, "wpa_key_mgmt") == 0) {
 			bss->wpa_key_mgmt =
 				hostapd_config_parse_key_mgmt(line, pos);
 			if (bss->wpa_key_mgmt == -1)
 				errors++;
+		/* WPA1加密算法 */
 		} else if (os_strcmp(buf, "wpa_pairwise") == 0) {
 			bss->wpa_pairwise =
 				hostapd_config_parse_cipher(line, pos);
@@ -1655,6 +1734,7 @@ struct hostapd_config * hostapd_config_read(const char *fname)
 					   bss->wpa_pairwise, pos);
 				errors++;
 			}
+		/* WPA2加密算法 */
 		} else if (os_strcmp(buf, "rsn_pairwise") == 0) {
 			bss->rsn_pairwise =
 				hostapd_config_parse_cipher(line, pos);
@@ -1670,12 +1750,15 @@ struct hostapd_config * hostapd_config_read(const char *fname)
 				errors++;
 			}
 #ifdef CONFIG_RSN_PREAUTH
+		/* 使能WPA2预认证 */
 		} else if (os_strcmp(buf, "rsn_preauth") == 0) {
 			bss->rsn_preauth = atoi(pos);
+		/* 处理预认证帧的接口 */
 		} else if (os_strcmp(buf, "rsn_preauth_interfaces") == 0) {
 			bss->rsn_preauth_interfaces = os_strdup(pos);
 #endif /* CONFIG_RSN_PREAUTH */
 #ifdef CONFIG_PEERKEY
+		/* 是否允许对等密钥协商 */
 		} else if (os_strcmp(buf, "peerkey") == 0) {
 			bss->peerkey = atoi(pos);
 #endif /* CONFIG_PEERKEY */
@@ -1755,19 +1838,24 @@ struct hostapd_config * hostapd_config_read(const char *fname)
 #endif /* CONFIG_NATIVE_WINDOWS */
 #endif /* CONFIG_NO_CTRL_IFACE */
 #ifdef RADIUS_SERVER
+		/* 作为RADIUS认证服务器时客户端列表配置 */
 		} else if (os_strcmp(buf, "radius_server_clients") == 0) {
 			os_free(bss->radius_server_clients);
 			bss->radius_server_clients = os_strdup(pos);
+		/* 作为RADIUS认证服务器时使用的端口 */
 		} else if (os_strcmp(buf, "radius_server_auth_port") == 0) {
 			bss->radius_server_auth_port = atoi(pos);
+		/* 支持IPv6 */
 		} else if (os_strcmp(buf, "radius_server_ipv6") == 0) {
 			bss->radius_server_ipv6 = atoi(pos);
 #endif /* RADIUS_SERVER */
 		} else if (os_strcmp(buf, "test_socket") == 0) {
 			os_free(bss->test_socket);
 			bss->test_socket = os_strdup(pos);
+		/* 使用PAE组播地址 */
 		} else if (os_strcmp(buf, "use_pae_group_addr") == 0) {
 			bss->use_pae_group_addr = atoi(pos);
+		/* 无线网卡模式 */
 		} else if (os_strcmp(buf, "hw_mode") == 0) {
 			if (os_strcmp(pos, "a") == 0)
 				conf->hw_mode = HOSTAPD_MODE_IEEE80211A;
@@ -1780,8 +1868,10 @@ struct hostapd_config * hostapd_config_read(const char *fname)
 					   "hw_mode '%s'", line, pos);
 				errors++;
 			}
+		/* 信道 */
 		} else if (os_strcmp(buf, "channel") == 0) {
 			conf->channel = atoi(pos);
+		/* beacon帧间隔 */
 		} else if (os_strcmp(buf, "beacon_int") == 0) {
 			int val = atoi(pos);
 			/* MIB defines range as 1..65535, but very small values
@@ -1903,12 +1993,14 @@ struct hostapd_config * hostapd_config_read(const char *fname)
 					   "ac item", line);
 				errors++;
 			}
+		/* 下一个bss配置 */
 		} else if (os_strcmp(buf, "bss") == 0) {
 			if (hostapd_config_bss(conf, pos)) {
 				wpa_printf(MSG_ERROR, "Line %d: invalid bss "
 					   "item", line);
 				errors++;
 			}
+		/* bssid的地址 */
 		} else if (os_strcmp(buf, "bssid") == 0) {
 			if (hwaddr_aton(pos, bss->bssid)) {
 				wpa_printf(MSG_ERROR, "Line %d: invalid bssid "
@@ -2161,6 +2253,7 @@ struct hostapd_config * hostapd_config_read(const char *fname)
 
 	fclose(f);
 
+	/* 遍历bss，进行安全认证配置的转换 */
 	for (i = 0; i < conf->num_bss; i++) {
 		bss = &conf->bss[i];
 
@@ -2188,10 +2281,13 @@ struct hostapd_config * hostapd_config_read(const char *fname)
 		bss->radius->auth_server = bss->radius->auth_servers;
 		bss->radius->acct_server = bss->radius->acct_servers;
 
+		/* WPA + 8021x认证 */
 		if (bss->wpa && bss->ieee802_1x) {
 			bss->ssid.security_policy = SECURITY_WPA;
+		/* WPA预共享密钥认证 */
 		} else if (bss->wpa) {
 			bss->ssid.security_policy = SECURITY_WPA_PSK;
+		/* 8021x认证 */
 		} else if (bss->ieee802_1x) {
 			int cipher = WPA_CIPHER_NONE;
 			bss->ssid.security_policy = SECURITY_IEEE_802_1X;
@@ -2202,6 +2298,7 @@ struct hostapd_config * hostapd_config_read(const char *fname)
 			bss->wpa_group = cipher;
 			bss->wpa_pairwise = cipher;
 			bss->rsn_pairwise = cipher;
+		/* WEP认证 */
 		} else if (bss->ssid.wep.keys_set) {
 			int cipher = WPA_CIPHER_WEP40;
 			if (bss->ssid.wep.len[0] >= 13)
@@ -2210,6 +2307,7 @@ struct hostapd_config * hostapd_config_read(const char *fname)
 			bss->wpa_group = cipher;
 			bss->wpa_pairwise = cipher;
 			bss->rsn_pairwise = cipher;
+		/* 明文 */
 		} else {
 			bss->ssid.security_policy = SECURITY_PLAINTEXT;
 			bss->wpa_group = WPA_CIPHER_NONE;
@@ -2218,6 +2316,7 @@ struct hostapd_config * hostapd_config_read(const char *fname)
 		}
 	}
 
+	/* 检查配置的有效性 */
 	if (hostapd_config_check(conf))
 		errors++;
 

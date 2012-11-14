@@ -42,6 +42,9 @@ int hex2byte(const char *hex)
 }
 
 
+/*
+将字符串格式的MAC地址转换为6字节MAC
+*/
 /**
  * hwaddr_aton - Convert ASCII string to MAC address (colon-delimited format)
  * @txt: MAC address as a string (e.g., "00:11:22:33:44:55")

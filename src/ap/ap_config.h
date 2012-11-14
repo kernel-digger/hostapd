@@ -220,6 +220,9 @@ struct hostapd_bss_config {
 	/* dot11AssociationSAQueryRetryTimeout (in TUs) */
 	int assoc_sa_query_retry_timeout;
 #endif /* CONFIG_IEEE80211W */
+	/* 使用的加密算法
+	   WPA_CIPHER_TKIP WPA_CIPHER_CCMP等的bit位组合
+	*/
 	int wpa_pairwise;
 	int wpa_group;
 	int wpa_group_rekey;

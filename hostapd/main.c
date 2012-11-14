@@ -247,7 +247,9 @@ static int hostapd_driver_init(struct hostapd_iface *iface)
 {
 	struct wpa_init_params params;
 	size_t i;
+	/* 第一个bss的数据 */
 	struct hostapd_data *hapd = iface->bss[0];
+	/* 该bss对应的配置 */
 	struct hostapd_bss_config *conf = hapd->conf;
 	u8 *b = conf->bssid;
 	struct wpa_driver_capa capa;
@@ -350,6 +352,7 @@ hostapd_interface_init(struct hapd_interfaces *interfaces,
 			iface->bss[0]->conf->logger_stdout_level--;
 	}
 
+	/* 驱动初始化 */
 	if (hostapd_driver_init(iface) ||
 	    hostapd_setup_interface(iface)) {
 		hostapd_interface_deinit_free(iface);
