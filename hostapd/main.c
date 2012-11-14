@@ -263,6 +263,7 @@ static int hostapd_driver_init(struct hostapd_iface *iface)
 	if (!(b[0] | b[1] | b[2] | b[3] | b[4] | b[5]))
 		b = NULL;
 
+	/* 根据配置文件中的配置收集参数 */
 	os_memset(&params, 0, sizeof(params));
 	for (i = 0; wpa_drivers[i]; i++) {
 		if (wpa_drivers[i] != hapd->driver)
@@ -301,6 +302,9 @@ static int hostapd_driver_init(struct hostapd_iface *iface)
 
 	params.own_addr = hapd->own_addr;
 
+	/* 对应驱动中的初始化
+	   比如atheros_init
+	*/
 	hapd->drv_priv = hapd->driver->hapd_init(hapd, &params);
 	os_free(params.bridge);
 	if (hapd->drv_priv == NULL) {

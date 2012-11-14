@@ -153,6 +153,7 @@ struct hostapd_roaming_consortium {
  * struct hostapd_bss_config - Per-BSS configuration
  */
 struct hostapd_bss_config {
+	/* 配置文件中interface配置的接口名称 */
 	char iface[IFNAMSIZ + 1];
 	char bridge[IFNAMSIZ + 1];
 	char wds_bridge[IFNAMSIZ + 1];

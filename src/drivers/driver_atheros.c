@@ -1138,6 +1138,10 @@ atheros_get_we_version(struct atheros_driver_data *drv)
 }
 
 
+/*
+初始化netlink
+通过netlink接收通知信息
+*/
 static int
 atheros_wireless_event_init(struct atheros_driver_data *drv)
 {
@@ -1217,34 +1221,43 @@ atheros_init(struct hostapd_data *hapd, struct wpa_init_params *params)
 	struct iwreq iwr;
 	char brname[IFNAMSIZ];
 
+	/* atheros驱动数据 */
 	drv = os_zalloc(sizeof(struct atheros_driver_data));
 	if (drv == NULL) {
 		printf("Could not allocate memory for atheros driver data\n");
 		return NULL;
 	}
 
+	/* 回指指针，所属的hostapd_data */
 	drv->hapd = hapd;
+	/* 用于ioctl的socket */
 	drv->ioctl_sock = socket(PF_INET, SOCK_DGRAM, 0);
 	if (drv->ioctl_sock < 0) {
 		perror("socket[PF_INET,SOCK_DGRAM]");
 		goto bad;
 	}
+	/* 复制接口名称 */
 	memcpy(drv->iface, params->ifname, sizeof(drv->iface));
 
+	/* 获取该接口的ifindex */
 	memset(&ifr, 0, sizeof(ifr));
 	os_strlcpy(ifr.ifr_name, drv->iface, sizeof(ifr.ifr_name));
 	if (ioctl(drv->ioctl_sock, SIOCGIFINDEX, &ifr) != 0) {
 		perror("ioctl(SIOCGIFINDEX)");
 		goto bad;
 	}
+	/* 记录ifindex */
 	drv->ifindex = ifr.ifr_ifindex;
 
+	/* 创建发送ETH_P_EAPOL报文的socket */
 	drv->sock_xmit = l2_packet_init(drv->iface, NULL, ETH_P_EAPOL,
 					handle_read, drv, 1);
 	if (drv->sock_xmit == NULL)
 		goto bad;
+	/* 复制接口MAC */
 	if (l2_packet_get_own_addr(drv->sock_xmit, params->own_addr))
 		goto bad;
+	/* 在接口所属桥上创建接收ETH_P_EAPOL报文的socket */
 	if (params->bridge[0]) {
 		wpa_printf(MSG_DEBUG, "Configure bridge %s for EAPOL traffic.",
 			   params->bridge[0]);
@@ -1261,8 +1274,10 @@ atheros_init(struct hostapd_data *hapd, struct wpa_init_params *params)
 		if (drv->sock_recv == NULL)
 			goto bad;
 	} else
+	/* 不属于桥则在配置的接口上接收 */
 		drv->sock_recv = drv->sock_xmit;
 
+	/* 设置无线网卡为AP(master)模式 */
 	memset(&iwr, 0, sizeof(iwr));
 	os_strlcpy(iwr.ifr_name, drv->iface, IFNAMSIZ);
 
@@ -1280,6 +1295,7 @@ atheros_init(struct hostapd_data *hapd, struct wpa_init_params *params)
 
 	atheros_receive_probe_req(drv);
 
+	/* 无线网卡事件初始化 */
 	if (atheros_wireless_event_init(drv))
 		goto bad;
 

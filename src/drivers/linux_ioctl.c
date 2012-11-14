@@ -21,6 +21,9 @@
 #include "linux_ioctl.h"
 
 
+/*
+设置@ifname接口的IFF_UP状态
+*/
 int linux_set_iface_flags(int sock, const char *ifname, int dev_up)
 {
 	struct ifreq ifr;

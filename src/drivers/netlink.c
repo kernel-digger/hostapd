@@ -105,6 +105,7 @@ struct netlink_data * netlink_init(struct netlink_config *cfg)
 
 	netlink->cfg = cfg;
 
+	/* 创建netlink socket，接收netlink通知 */
 	netlink->sock = socket(PF_NETLINK, SOCK_RAW, NETLINK_ROUTE);
 	if (netlink->sock < 0) {
 		wpa_printf(MSG_ERROR, "netlink: Failed to open netlink "
@@ -124,6 +125,7 @@ struct netlink_data * netlink_init(struct netlink_config *cfg)
 		return NULL;
 	}
 
+	/* 注册到事件读循环 */
 	eloop_register_read_sock(netlink->sock, netlink_receive, netlink,
 				 NULL);
 

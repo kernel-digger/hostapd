@@ -59,6 +59,7 @@ struct hostapd_data {
 	struct hostapd_bss_config *conf;
 	int interface_added; /* virtual interface added for this BSS */
 
+	/* 接口的MAC地址 */
 	u8 own_addr[ETH_ALEN];
 
 	int num_sta; /* number of entries in sta_list */
@@ -76,6 +77,9 @@ struct hostapd_data {
 	u32 sta_aid[AID_WORDS];
 
 	const struct wpa_driver_ops *driver;
+	/* 驱动私有数据
+	   比如hapd_init => atheros_init返回的atheros_driver_data
+	*/
 	void *drv_priv;
 
 	void (*new_assoc_sta_cb)(struct hostapd_data *hapd,

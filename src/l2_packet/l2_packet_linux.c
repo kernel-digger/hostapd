@@ -107,11 +107,16 @@ struct l2_packet_data * l2_packet_init(
 	l2 = os_zalloc(sizeof(struct l2_packet_data));
 	if (l2 == NULL)
 		return NULL;
+	/* 复制接口名称 */
 	os_strlcpy(l2->ifname, ifname, sizeof(l2->ifname));
+	/* 接收到报文时调用的回调函数 */
 	l2->rx_callback = rx_callback;
+	/* 回调函数参数 */
 	l2->rx_callback_ctx = rx_callback_ctx;
+	/* 收取到的报文是否需要包含L2头 */
 	l2->l2_hdr = l2_hdr;
 
+	/* 创建对应的socket */
 	l2->fd = socket(PF_PACKET, l2_hdr ? SOCK_RAW : SOCK_DGRAM,
 			htons(protocol));
 	if (l2->fd < 0) {
@@ -129,12 +134,14 @@ struct l2_packet_data * l2_packet_init(
 		os_free(l2);
 		return NULL;
 	}
+	/* 记录ifindex */
 	l2->ifindex = ifr.ifr_ifindex;
 
 	os_memset(&ll, 0, sizeof(ll));
 	ll.sll_family = PF_PACKET;
 	ll.sll_ifindex = ifr.ifr_ifindex;
 	ll.sll_protocol = htons(protocol);
+	/* 绑定接口和协议 */
 	if (bind(l2->fd, (struct sockaddr *) &ll, sizeof(ll)) < 0) {
 		wpa_printf(MSG_ERROR, "%s: bind[PF_PACKET]: %s",
 			   __func__, strerror(errno));
@@ -143,6 +150,7 @@ struct l2_packet_data * l2_packet_init(
 		return NULL;
 	}
 
+	/* 获取接口的MAC地址 */
 	if (ioctl(l2->fd, SIOCGIFHWADDR, &ifr) < 0) {
 		wpa_printf(MSG_ERROR, "%s: ioctl[SIOCGIFHWADDR]: %s",
 			   __func__, strerror(errno));
@@ -152,6 +160,7 @@ struct l2_packet_data * l2_packet_init(
 	}
 	os_memcpy(l2->own_addr, ifr.ifr_hwaddr.sa_data, ETH_ALEN);
 
+	/* 注册到事件循环中 */
 	eloop_register_read_sock(l2->fd, l2_packet_receive, l2, NULL);
 
 	return l2;
