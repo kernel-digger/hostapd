@@ -96,6 +96,13 @@ void hostapd_config_defaults_bss(struct hostapd_bss_config *bss)
 }
 
 
+/*
+创建
+hostapd_config
+hostapd_bss_config
+hostapd_radius_servers
+并设置默认值
+*/
 struct hostapd_config * hostapd_config_defaults(void)
 {
 #define ecw2cw(ecw) ((1 << (ecw)) - 1)
@@ -123,7 +130,9 @@ struct hostapd_config * hostapd_config_defaults(void)
 
 #undef ecw2cw
 
+	/* 分配struct hostapd_config结构空间 */
 	conf = os_zalloc(sizeof(*conf));
+	/* 分配一个每bss的配置结构空间 */
 	bss = os_zalloc(sizeof(*bss));
 	if (conf == NULL || bss == NULL) {
 		wpa_printf(MSG_ERROR, "Failed to allocate memory for "
@@ -133,6 +142,7 @@ struct hostapd_config * hostapd_config_defaults(void)
 		return NULL;
 	}
 
+	/* 用来保存radius配置的结构 */
 	bss->radius = os_zalloc(sizeof(*bss->radius));
 	if (bss->radius == NULL) {
 		os_free(conf);
@@ -140,8 +150,10 @@ struct hostapd_config * hostapd_config_defaults(void)
 		return NULL;
 	}
 
+	/* bss配置的默认值 */
 	hostapd_config_defaults_bss(bss);
 
+	/* 初始只分配了一个bss配置结构 */
 	conf->num_bss = 1;
 	conf->bss = bss;
 

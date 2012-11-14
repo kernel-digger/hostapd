@@ -190,12 +190,14 @@ static struct hostapd_iface * hostapd_init(const char *config_file)
 	struct hostapd_data *hapd;
 	size_t i;
 
+	/* 分配struct hostapd_iface结构空间 */
 	hapd_iface = os_zalloc(sizeof(*hapd_iface));
 	if (hapd_iface == NULL)
 		goto fail;
 
 	hapd_iface->reload_config = hostapd_reload_config;
 	hapd_iface->config_read_cb = hostapd_config_read;
+	/* 复制配置文件名称 */
 	hapd_iface->config_fname = os_strdup(config_file);
 	if (hapd_iface->config_fname == NULL)
 		goto fail;
@@ -203,6 +205,7 @@ static struct hostapd_iface * hostapd_init(const char *config_file)
 	hapd_iface->ctrl_iface_deinit = hostapd_ctrl_iface_deinit;
 	hapd_iface->for_each_interface = hostapd_for_each_interface;
 
+	/* 解析配置文件 */
 	conf = hostapd_config_read(hapd_iface->config_fname);
 	if (conf == NULL)
 		goto fail;
@@ -333,6 +336,7 @@ hostapd_interface_init(struct hapd_interfaces *interfaces,
 	int k;
 
 	wpa_printf(MSG_ERROR, "Configuration file: %s", config_fname);
+	/* 根据配置文件初始化接口 */
 	iface = hostapd_init(config_fname);
 	if (!iface)
 		return NULL;

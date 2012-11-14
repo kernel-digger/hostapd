@@ -368,9 +368,14 @@ struct hostapd_bss_config {
  * struct hostapd_config - Per-radio interface configuration
  */
 struct hostapd_config {
+	/* bss记录分配的多个结构空间
+	   last_bss指向最后一项
+	*/
 	struct hostapd_bss_config *bss, *last_bss;
+	/* 动态分配的bss个数 */
 	size_t num_bss;
 
+	/* beacon间隔 */
 	u16 beacon_int;
 	int rts_threshold;
 	int fragm_threshold;
