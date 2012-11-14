@@ -852,14 +852,19 @@ hostapd_alloc_bss_data(struct hostapd_iface *hapd_iface,
 {
 	struct hostapd_data *hapd;
 
+	/* 分配空间 */
 	hapd = os_zalloc(sizeof(*hapd));
 	if (hapd == NULL)
 		return NULL;
 
 	hapd->new_assoc_sta_cb = hostapd_new_assoc_sta;
+	/* 接口配置 */
 	hapd->iconf = conf;
+	/* bss配置 */
 	hapd->conf = bss;
+	/* 所属接口 */
 	hapd->iface = hapd_iface;
+	/* 使用的驱动 */
 	hapd->driver = hapd->iconf->driver;
 
 	return hapd;

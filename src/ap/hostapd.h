@@ -81,6 +81,7 @@ struct hostapd_data {
 	void (*new_assoc_sta_cb)(struct hostapd_data *hapd,
 				 struct sta_info *sta, int reassoc);
 
+	/* 回指向本hostapd_data */
 	void *msg_ctx; /* ctx for wpa_msg() calls */
 	void *msg_ctx_parent; /* parent interface ctx for wpa_msg() calls */
 

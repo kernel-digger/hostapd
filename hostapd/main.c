@@ -211,13 +211,16 @@ static struct hostapd_iface * hostapd_init(const char *config_file)
 		goto fail;
 	hapd_iface->conf = conf;
 
+	/* 记录配置的bss数量 */
 	hapd_iface->num_bss = conf->num_bss;
+	/* 根据bss数量分配hostapd_data指针结构空间 */
 	hapd_iface->bss = os_zalloc(conf->num_bss *
 				    sizeof(struct hostapd_data *));
 	if (hapd_iface->bss == NULL)
 		goto fail;
 
 	for (i = 0; i < conf->num_bss; i++) {
+		/* 分配每bss的数据hostapd_data结构 */
 		hapd = hapd_iface->bss[i] =
 			hostapd_alloc_bss_data(hapd_iface, conf,
 					       &conf->bss[i]);
