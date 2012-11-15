@@ -43,9 +43,12 @@ void hostapd_free_hw_features(struct hostapd_hw_modes *hw_features,
 	os_free(hw_features);
 }
 
-
+/*
+获取硬件特性参数
+*/
 int hostapd_get_hw_features(struct hostapd_iface *iface)
 {
+	/* 在第一个bss上 */
 	struct hostapd_data *hapd = iface->bss[0];
 	int ret = 0, i, j;
 	u16 num_modes, flags;
@@ -53,6 +56,7 @@ int hostapd_get_hw_features(struct hostapd_iface *iface)
 
 	if (hostapd_drv_none(hapd))
 		return -1;
+	/* 获取硬件特性参数 */
 	modes = hostapd_get_hw_feature_data(hapd, &num_modes, &flags);
 	if (modes == NULL) {
 		hostapd_logger(hapd, NULL, HOSTAPD_MODULE_IEEE80211,
@@ -101,6 +105,9 @@ int hostapd_get_hw_features(struct hostapd_iface *iface)
 }
 
 
+/*
+设置无线网卡速率
+*/
 int hostapd_prepare_rates(struct hostapd_data *hapd,
 			  struct hostapd_hw_modes *mode)
 {
@@ -604,7 +611,9 @@ int hostapd_select_hw_mode(struct hostapd_iface *iface)
 	iface->current_mode = NULL;
 	for (i = 0; i < iface->num_hw_features; i++) {
 		struct hostapd_hw_modes *mode = &iface->hw_features[i];
+		/* 判断硬件模式一致 */
 		if (mode->mode == iface->conf->hw_mode) {
+			/* 当前使用的硬件参数 */
 			iface->current_mode = mode;
 			break;
 		}

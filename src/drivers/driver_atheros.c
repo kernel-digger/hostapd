@@ -1385,6 +1385,9 @@ atheros_set_countermeasures(void *priv, int enabled)
 	return set80211param(drv, IEEE80211_PARAM_COUNTERMEASURES, enabled);
 }
 
+/*
+参数配置完毕，开启无线网卡
+*/
 static int
 atheros_commit(void *priv)
 {

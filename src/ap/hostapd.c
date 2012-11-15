@@ -498,13 +498,18 @@ static int hostapd_setup_bss(struct hostapd_data *hapd, int first)
 	char force_ifname[IFNAMSIZ];
 	u8 if_addr[ETH_ALEN];
 
+	/* 不是第一个bss */
 	if (!first) {
+		/* 没有明确的配置bssid */
 		if (hostapd_mac_comp_empty(hapd->conf->bssid) == 0) {
 			/* Allocate the next available BSSID. */
 			do {
+				/* 基于前一个bss的MAC，进行MAC增1 */
 				inc_byte_array(hapd->own_addr, ETH_ALEN);
+			/* 直到增1后的MAC不重复为止 */
 			} while (mac_in_conf(hapd->iconf, hapd->own_addr));
 		} else {
+			/* 使用配置的bssid */
 			/* Allocate the configured BSSID. */
 			os_memcpy(hapd->own_addr, hapd->conf->bssid, ETH_ALEN);
 
@@ -518,7 +523,9 @@ static int hostapd_setup_bss(struct hostapd_data *hapd, int first)
 			}
 		}
 
+		/* 标记该接口是新创建的 */
 		hapd->interface_added = 1;
+		/* 创建VAP接口 */
 		if (hostapd_if_add(hapd->iface->bss[0], WPA_IF_AP_BSS,
 				   hapd->conf->iface, hapd->own_addr, hapd,
 				   &hapd->drv_priv, force_ifname, if_addr,
@@ -540,6 +547,7 @@ static int hostapd_setup_bss(struct hostapd_data *hapd, int first)
 	if (hostapd_setup_encryption(hapd->conf->iface, hapd))
 		return -1;
 
+	/* 获取ssid */
 	/*
 	 * Fetch the SSID from the system and use it or,
 	 * if one was specified in the config file, verify they
@@ -550,6 +558,7 @@ static int hostapd_setup_bss(struct hostapd_data *hapd, int first)
 		wpa_printf(MSG_ERROR, "Could not read SSID from system");
 		return -1;
 	}
+	/* 配置文件中配置了ssid */
 	if (conf->ssid.ssid_set) {
 		/*
 		 * If SSID is specified in the config file and it differs
@@ -582,6 +591,7 @@ static int hostapd_setup_bss(struct hostapd_data *hapd, int first)
 		return -1;
 	}
 
+	/* 使用配置文件中配置的ssid名称 */
 	/* Set SSID for the kernel driver (to be used in beacon and probe
 	 * response frames) */
 	if (set_ssid && hostapd_set_ssid(hapd, (u8 *) conf->ssid.ssid,
@@ -675,6 +685,7 @@ static void hostapd_tx_queue_params(struct hostapd_iface *iface)
 
 static int setup_interface(struct hostapd_iface *iface)
 {
+	/* 第一个bss的数据 */
 	struct hostapd_data *hapd = iface->bss[0];
 	size_t i;
 	char country[4];
@@ -727,6 +738,7 @@ static int setup_interface(struct hostapd_iface *iface)
 
 int hostapd_setup_interface_complete(struct hostapd_iface *iface, int err)
 {
+	/* 第一个bss的数据 */
 	struct hostapd_data *hapd = iface->bss[0];
 	size_t j;
 	u8 *prev_addr;
@@ -781,14 +793,22 @@ int hostapd_setup_interface_complete(struct hostapd_iface *iface, int err)
 		return -1;
 	}
 
+	/* 第一个bss数据中记录的接口MAC */
 	prev_addr = hapd->own_addr;
 
+	/* 遍历配置的bss */
 	for (j = 0; j < iface->num_bss; j++) {
 		hapd = iface->bss[j];
+		/* 先复制前一个bss的MAC */
 		if (j)
 			os_memcpy(hapd->own_addr, prev_addr, ETH_ALEN);
+		/* 配置bss */
 		if (hostapd_setup_bss(hapd, j == 0))
 			return -1;
+		/* 当前bss的bssid不是明确配置的
+		   则其own_addr是在hostapd_setup_bss中增1计算出来的
+		   使用prev_addr记录，以便后续bss继续增1计算own_addr
+		*/
 		if (hostapd_mac_comp_empty(hapd->conf->bssid) == 0)
 			prev_addr = hapd->own_addr;
 	}
@@ -797,6 +817,7 @@ int hostapd_setup_interface_complete(struct hostapd_iface *iface, int err)
 
 	ap_list_init(iface);
 
+	/* 参数配置完毕，开启无线网卡 */
 	if (hostapd_driver_commit(hapd) < 0) {
 		wpa_printf(MSG_ERROR, "%s: Failed to commit driver "
 			   "configuration", __func__);

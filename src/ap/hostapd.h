@@ -59,7 +59,9 @@ struct hostapd_data {
 	struct hostapd_bss_config *conf;
 	int interface_added; /* virtual interface added for this BSS */
 
-	/* 无线网卡接口的MAC地址 */
+	/* 无线网卡接口的MAC地址
+	   VAP的MAC
+	*/
 	u8 own_addr[ETH_ALEN];
 
 	int num_sta; /* number of entries in sta_list */
@@ -89,6 +91,7 @@ struct hostapd_data {
 	void *msg_ctx; /* ctx for wpa_msg() calls */
 	void *msg_ctx_parent; /* parent interface ctx for wpa_msg() calls */
 
+	/* hostapd_setup_bss => radius_client_init */
 	struct radius_client_data *radius;
 	u32 acct_session_id_hi, acct_session_id_lo;
 
@@ -98,6 +101,7 @@ struct hostapd_data {
 	struct hostapd_acl_query_data *acl_queries;
 
 	struct wpa_authenticator *wpa_auth;
+	/* hostapd_setup_bss => ieee802_1x_init => eapol_auth_init */
 	struct eapol_authenticator *eapol_auth;
 
 	struct rsn_preauth_interface *preauth_iface;

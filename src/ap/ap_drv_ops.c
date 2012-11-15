@@ -524,6 +524,10 @@ int hostapd_driver_commit(struct hostapd_data *hapd)
 }
 
 
+/*
+判断是否使用的为none驱动
+使用none驱动的时候，hostapd仅作为RADIUS SERVER使用，不操作网卡
+*/
 int hostapd_drv_none(struct hostapd_data *hapd)
 {
 	return hapd->driver && os_strcmp(hapd->driver->name, "none") == 0;

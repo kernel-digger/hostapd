@@ -91,11 +91,13 @@ struct hostapd_hw_modes {
 	 */
 	int *rates;
 
+	/* HT:high throughput高吞吐量 */
 	/**
 	 * ht_capab - HT (IEEE 802.11n) capabilities
 	 */
 	u16 ht_capab;
 
+	/* MCS:modulation and coding scheme调制编码格式 */
 	/**
 	 * mcs_set - MCS (IEEE 802.11n) rate parameters
 	 */

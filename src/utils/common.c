@@ -152,7 +152,9 @@ int hexstr2bin(const char *hex, u8 *buf, size_t len)
 	return 0;
 }
 
-
+/*
+字节数组增加1
+*/
 /**
  * inc_byte_array - Increment arbitrary length byte array by one
  * @counter: Pointer to byte array

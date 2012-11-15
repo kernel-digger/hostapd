@@ -178,12 +178,21 @@ struct hostapd_config * hostapd_config_defaults(void)
 }
 
 
+/*
+判断MAC是否相等
+
+@return	: 0 - 相等
+*/
 int hostapd_mac_comp(const void *a, const void *b)
 {
 	return os_memcmp(a, b, sizeof(macaddr));
 }
 
+/*
+判断MAC是否为全0
 
+@return	: 0 - 是
+*/
 int hostapd_mac_comp_empty(const void *a)
 {
 	macaddr empty = { 0 };
