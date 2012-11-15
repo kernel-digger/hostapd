@@ -67,6 +67,9 @@ struct wpabuf * radius_msg_get_buf(struct radius_msg *msg)
 }
 
 
+/*
+取第@idx个属性头
+*/
 static struct radius_attr_hdr *
 radius_get_attr_hdr(struct radius_msg *msg, int idx)
 {
@@ -323,6 +326,9 @@ static void radius_msg_dump_attr(struct radius_attr_hdr *hdr)
 }
 
 
+/*
+打印报文信息
+*/
 void radius_msg_dump(struct radius_msg *msg)
 {
 	size_t i;
@@ -434,6 +440,7 @@ void radius_msg_finish_acct(struct radius_msg *msg, const u8 *secret,
 static int radius_msg_add_attr_to_array(struct radius_msg *msg,
 					struct radius_attr_hdr *attr)
 {
+	/* 属性比较多，扩大记录空间 */
 	if (msg->attr_used >= msg->attr_size) {
 		size_t *nattr_pos;
 		int nlen = msg->attr_size * 2;
@@ -447,6 +454,7 @@ static int radius_msg_add_attr_to_array(struct radius_msg *msg,
 		msg->attr_size = nlen;
 	}
 
+	/* 记录属性开始位置 */
 	msg->attr_pos[msg->attr_used++] =
 		(unsigned char *) attr - wpabuf_head_u8(msg->buf);
 
@@ -487,6 +495,10 @@ struct radius_attr_hdr *radius_msg_add_attr(struct radius_msg *msg, u8 type,
 }
 
 
+/*
+解析RADIUS报文
+记录报文中各个属性字段的位置
+*/
 /**
  * radius_msg_parse - Parse a RADIUS message
  * @data: RADIUS message to be parsed
@@ -507,8 +519,10 @@ struct radius_msg * radius_msg_parse(const u8 *data, size_t len)
 	if (data == NULL || len < sizeof(*hdr))
 		return NULL;
 
+	/* RADIUS消息头 */
 	hdr = (struct radius_hdr *) data;
 
+	/* 检查长度 */
 	msg_len = ntohs(hdr->length);
 	if (msg_len < sizeof(*hdr) || msg_len > len) {
 		wpa_printf(MSG_INFO, "RADIUS: Invalid message length");
@@ -524,6 +538,7 @@ struct radius_msg * radius_msg_parse(const u8 *data, size_t len)
 	if (msg == NULL)
 		return NULL;
 
+	/* 复制报文 */
 	msg->buf = wpabuf_alloc_copy(data, msg_len);
 	if (msg->buf == NULL || radius_msg_initialize(msg)) {
 		radius_msg_free(msg);
@@ -532,12 +547,16 @@ struct radius_msg * radius_msg_parse(const u8 *data, size_t len)
 	msg->hdr = wpabuf_mhead(msg->buf);
 
 	/* parse attributes */
+	/* RADIUS属性开始位置 */
 	pos = wpabuf_mhead_u8(msg->buf) + sizeof(struct radius_hdr);
+	/* RADIUS属性结束位置 */
 	end = wpabuf_mhead_u8(msg->buf) + wpabuf_len(msg->buf);
+	/* 遍历解析RADIUS报文中的多个属性 */
 	while (pos < end) {
 		if ((size_t) (end - pos) < sizeof(*attr))
 			goto fail;
 
+		/* 属性头 */
 		attr = (struct radius_attr_hdr *) pos;
 
 		if (pos + attr->length > end || attr->length < sizeof(*attr))
@@ -548,6 +567,7 @@ struct radius_msg * radius_msg_parse(const u8 *data, size_t len)
 		if (radius_msg_add_attr_to_array(msg, attr))
 			goto fail;
 
+		/* 下一个属性 */
 		pos += attr->length;
 	}
 
@@ -631,6 +651,7 @@ int radius_msg_verify_msg_auth(struct radius_msg *msg, const u8 *secret,
 	struct radius_attr_hdr *attr = NULL, *tmp;
 	size_t i;
 
+	/* 检查收到的报文中是否有多个RADIUS_ATTR_MESSAGE_AUTHENTICATOR属性 */
 	for (i = 0; i < msg->attr_used; i++) {
 		tmp = radius_get_attr_hdr(msg, i);
 		if (tmp->type == RADIUS_ATTR_MESSAGE_AUTHENTICATOR) {
@@ -643,6 +664,7 @@ int radius_msg_verify_msg_auth(struct radius_msg *msg, const u8 *secret,
 		}
 	}
 
+	/* 要有一个RADIUS_ATTR_MESSAGE_AUTHENTICATOR属性 */
 	if (attr == NULL) {
 		printf("No Message-Authenticator attribute found\n");
 		return 1;
@@ -692,12 +714,16 @@ int radius_msg_verify(struct radius_msg *msg, const u8 *secret,
 	}
 
 	/* ResponseAuth = MD5(Code+ID+Length+RequestAuth+Attributes+Secret) */
+	/* Code+ID+Length */
 	addr[0] = (u8 *) msg->hdr;
 	len[0] = 1 + 1 + 2;
+	/* RequestAuth */
 	addr[1] = sent_msg->hdr->authenticator;
 	len[1] = MD5_MAC_LEN;
+	/* Attributes */
 	addr[2] = wpabuf_head_u8(msg->buf) + sizeof(struct radius_hdr);
 	len[2] = wpabuf_len(msg->buf) - sizeof(struct radius_hdr);
+	/* Secret */
 	addr[3] = secret;
 	len[3] = secret_len;
 	md5_vector(4, addr, len, hash);
@@ -1136,6 +1162,18 @@ radius_msg_add_attr_user_password(struct radius_msg *msg,
 }
 
 
+/*
+根据属性类型@type到@msg取对应的数据
+
+@msg	: 待查RADIUS报文
+@type	: 属性类型
+@buf	: 保存数据的缓冲区
+@len	: @buf长度
+
+@return	: -1 - @msg中没有该@type属性
+		  有的话返回属性数据长度
+		  有@buf的话，则将属性值复制到@buf内
+*/
 int radius_msg_get_attr(struct radius_msg *msg, u8 type, u8 *buf, size_t len)
 {
 	struct radius_attr_hdr *attr = NULL, *tmp;

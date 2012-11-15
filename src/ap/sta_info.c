@@ -53,7 +53,9 @@ int ap_for_each_sta(struct hostapd_data *hapd,
 {
 	struct sta_info *sta;
 
+	/* 遍历该bss下所有的sta */
 	for (sta = hapd->sta_list; sta; sta = sta->next) {
+		/* 调用回调函数 */
 		if (cb(hapd, sta, ctx))
 			return 1;
 	}

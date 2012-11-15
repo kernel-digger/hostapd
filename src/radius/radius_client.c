@@ -200,6 +200,8 @@ struct radius_client_data {
 	 */
 	int acct_sock;
 
+	/* 以下几个处理函数由radius_client_register注册 */
+
 	/**
 	 * auth_handlers - Authentication message handlers
 	 */
@@ -705,6 +707,7 @@ static void radius_client_receive(int sock, void *eloop_ctx, void *sock_ctx)
 {
 	struct radius_client_data *radius = eloop_ctx;
 	struct hostapd_radius_servers *conf = radius->conf;
+	/* 是认证socket还是记账socket */
 	RadiusType msg_type = (RadiusType) sock_ctx;
 	int len, roundtrip;
 	unsigned char buf[3000];
@@ -717,6 +720,7 @@ static void radius_client_receive(int sock, void *eloop_ctx, void *sock_ctx)
 	struct hostapd_radius_server *rconf;
 	int invalid_authenticator = 0;
 
+	/* 取处理函数集 */
 	if (msg_type == RADIUS_ACCT) {
 		handlers = radius->acct_handlers;
 		num_handlers = radius->num_acct_handlers;
@@ -727,6 +731,7 @@ static void radius_client_receive(int sock, void *eloop_ctx, void *sock_ctx)
 		rconf = conf->auth_server;
 	}
 
+	/* 接收UDP报文数据 */
 	len = recv(sock, buf, sizeof(buf), MSG_DONTWAIT);
 	if (len < 0) {
 		perror("recv[RADIUS]");
@@ -741,6 +746,7 @@ static void radius_client_receive(int sock, void *eloop_ctx, void *sock_ctx)
 		return;
 	}
 
+	/* 解析RADIUS报文 */
 	msg = radius_msg_parse(buf, len);
 	if (msg == NULL) {
 		printf("Parsing incoming RADIUS frame failed\n");
@@ -754,6 +760,7 @@ static void radius_client_receive(int sock, void *eloop_ctx, void *sock_ctx)
 	if (conf->msg_dumps)
 		radius_msg_dump(msg);
 
+	/* 统计 */
 	switch (hdr->code) {
 	case RADIUS_CODE_ACCESS_ACCEPT:
 		rconf->access_accepts++;
@@ -769,6 +776,7 @@ static void radius_client_receive(int sock, void *eloop_ctx, void *sock_ctx)
 		break;
 	}
 
+	/* 匹配发出的请求报文 */
 	prev_req = NULL;
 	req = radius->msgs;
 	while (req) {
@@ -794,6 +802,7 @@ static void radius_client_receive(int sock, void *eloop_ctx, void *sock_ctx)
 		goto fail;
 	}
 
+	/* 计算请求响应时间 */
 	os_get_time(&now);
 	roundtrip = (now.sec - req->last_attempt.sec) * 100 +
 		(now.usec - req->last_attempt.usec) / 10000;
@@ -804,6 +813,7 @@ static void radius_client_receive(int sock, void *eloop_ctx, void *sock_ctx)
 		       roundtrip / 100, roundtrip % 100);
 	rconf->round_trip_time = roundtrip;
 
+	/* 已收到响应报文，移出请求链表 */
 	/* Remove ACKed RADIUS packet from retransmit list */
 	if (prev_req)
 		prev_req->next = req->next;
@@ -811,8 +821,13 @@ static void radius_client_receive(int sock, void *eloop_ctx, void *sock_ctx)
 		radius->msgs = req->next;
 	radius->num_msgs--;
 
+	/* 遍历注册的处理函数
+	   RADIUS_ACCT - accounting_receive
+	   RADIUS_AUTH - ieee802_1x_receive_auth; hostapd_acl_recv_radius
+	*/
 	for (i = 0; i < num_handlers; i++) {
 		RadiusRxResult res;
+		/* 处理报文 */
 		res = handlers[i].handler(msg, req->msg, req->shared_secret,
 					  req->shared_secret_len,
 					  handlers[i].data);

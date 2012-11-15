@@ -1261,12 +1261,14 @@ ieee802_1x_receive_auth(struct radius_msg *msg, struct radius_msg *req,
 	int override_eapReq = 0;
 	struct radius_hdr *hdr = radius_msg_get_hdr(msg);
 
+	/* 根据identifier取对应的状态机 */
 	sm = ieee802_1x_search_radius_identifier(hapd, hdr->identifier);
 	if (sm == NULL) {
 		wpa_printf(MSG_DEBUG, "IEEE 802.1X: Could not find matching "
 			   "station for this RADIUS message");
 		return RADIUS_RX_UNKNOWN;
 	}
+	/* 取对应的sta */
 	sta = sm->sta;
 
 	/* RFC 2869, Ch. 5.13: valid Message-Authenticator attribute MUST be
