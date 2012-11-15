@@ -60,8 +60,10 @@ enum eapol_event {
 };
 
 struct eapol_auth_cb {
+	/* 发送EAPOL报文给客户端 */
 	void (*eapol_send)(void *ctx, void *sta_ctx, u8 type, const u8 *data,
 			   size_t datalen);
+	/* 发送RADIUS报文给认证服务器 */
 	void (*aaa_send)(void *ctx, void *sta_ctx, const u8 *data,
 			 size_t datalen);
 	void (*finished)(void *ctx, void *sta_ctx, int success, int preauth);
