@@ -182,6 +182,7 @@ struct wpa_authenticator {
 	u8 *wpa_ie;
 	size_t wpa_ie_len;
 
+	/* 认证点的MAC，比如VAP的MAC(bssid) */
 	u8 addr[ETH_ALEN];
 
 	struct rsn_pmksa_cache *pmksa;

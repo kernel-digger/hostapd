@@ -470,9 +470,11 @@ int hostapd_setup_wpa(struct hostapd_data *hapd)
 	const u8 *wpa_ie;
 	size_t wpa_ie_len;
 
+	/* 复制bss中的wpa配置 */
 	hostapd_wpa_auth_conf(hapd->conf, &_conf);
 	if (hapd->iface->drv_flags & WPA_DRIVER_FLAGS_EAPOL_TX_STATUS)
 		_conf.tx_status = 1;
+	/* 设置回调函数 */
 	os_memset(&cb, 0, sizeof(cb));
 	cb.ctx = hapd;
 	cb.logger = hostapd_wpa_auth_logger;
@@ -492,6 +494,8 @@ int hostapd_setup_wpa(struct hostapd_data *hapd)
 	cb.send_ft_action = hostapd_wpa_auth_send_ft_action;
 	cb.add_sta = hostapd_wpa_auth_add_sta;
 #endif /* CONFIG_IEEE80211R */
+
+	/* 初始化WPA认证者 */
 	hapd->wpa_auth = wpa_init(hapd->own_addr, &_conf, &cb);
 	if (hapd->wpa_auth == NULL) {
 		wpa_printf(MSG_ERROR, "WPA initialization failed.");
@@ -504,6 +508,7 @@ int hostapd_setup_wpa(struct hostapd_data *hapd)
 		return -1;
 	}
 
+	/* 向驱动中设置WPA IE */
 	wpa_ie = wpa_auth_get_wpa_ie(hapd->wpa_auth, &wpa_ie_len);
 	if (hostapd_set_generic_elem(hapd, wpa_ie, wpa_ie_len)) {
 		wpa_printf(MSG_ERROR, "Failed to configure WPA IE for "

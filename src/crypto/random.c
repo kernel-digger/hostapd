@@ -239,6 +239,7 @@ int random_pool_ready(void)
 		return -1;
 	}
 
+	/* 读取随机数到dummy_key中 */
 	res = read(fd, dummy_key + dummy_key_avail,
 		   sizeof(dummy_key) - dummy_key_avail);
 	if (res < 0) {

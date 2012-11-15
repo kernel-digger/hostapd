@@ -100,6 +100,7 @@ struct hostapd_data {
 	struct hostapd_cached_radius_acl *acl_cache;
 	struct hostapd_acl_query_data *acl_queries;
 
+	/* hostapd_setup_bss => hostapd_setup_wpa => wpa_init */
 	struct wpa_authenticator *wpa_auth;
 	/* hostapd_setup_bss => ieee802_1x_init => eapol_auth_init */
 	struct eapol_authenticator *eapol_auth;

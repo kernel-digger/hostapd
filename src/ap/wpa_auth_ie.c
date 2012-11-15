@@ -326,6 +326,9 @@ int wpa_write_rsn_ie(struct wpa_auth_config *conf, u8 *buf, size_t len,
 }
 
 
+/*
+生成WPA IE信息
+*/
 int wpa_auth_gen_wpa_ie(struct wpa_authenticator *wpa_auth)
 {
 	u8 *pos, buf[128];
@@ -333,7 +336,9 @@ int wpa_auth_gen_wpa_ie(struct wpa_authenticator *wpa_auth)
 
 	pos = buf;
 
+	/* WPA2 */
 	if (wpa_auth->conf.wpa & WPA_PROTO_RSN) {
+		/* 生成WPA2 IE */
 		res = wpa_write_rsn_ie(&wpa_auth->conf,
 				       pos, buf + sizeof(buf) - pos, NULL);
 		if (res < 0)
@@ -350,7 +355,10 @@ int wpa_auth_gen_wpa_ie(struct wpa_authenticator *wpa_auth)
 		pos += res;
 	}
 #endif /* CONFIG_IEEE80211R */
+
+	/* WPA1 */
 	if (wpa_auth->conf.wpa & WPA_PROTO_WPA) {
+		/* 生成WPA1 IE */
 		res = wpa_write_wpa_ie(&wpa_auth->conf,
 				       pos, buf + sizeof(buf) - pos);
 		if (res < 0)
@@ -362,7 +370,9 @@ int wpa_auth_gen_wpa_ie(struct wpa_authenticator *wpa_auth)
 	wpa_auth->wpa_ie = os_malloc(pos - buf);
 	if (wpa_auth->wpa_ie == NULL)
 		return -1;
+	/* 复制IE信息 */
 	os_memcpy(wpa_auth->wpa_ie, buf, pos - buf);
+	/* 生成的IE长度 */
 	wpa_auth->wpa_ie_len = pos - buf;
 
 	return 0;

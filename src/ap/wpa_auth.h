@@ -128,6 +128,9 @@ struct ft_remote_r1kh {
 };
 
 
+/*
+来自hostapd_bss_config中关于WPA认证的相关配置
+*/
 struct wpa_auth_config {
 	int wpa;
 	int wpa_key_mgmt;
@@ -176,7 +179,11 @@ typedef enum {
 	WPA_EAPOL_keyDone, WPA_EAPOL_inc_EapolFramesTx
 } wpa_eapol_variable;
 
+/*
+WPA认证的回调函数
+*/
 struct wpa_auth_callbacks {
+	/* 指向struct hostapd_data */
 	void *ctx;
 	void (*logger)(void *ctx, const u8 *addr, logger_level level,
 		       const char *txt);

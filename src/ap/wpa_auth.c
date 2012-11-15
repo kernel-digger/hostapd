@@ -378,7 +378,11 @@ static struct wpa_group * wpa_group_init(struct wpa_authenticator *wpa_auth,
 	return group;
 }
 
-
+/*
+@addr	: 认证点的MAC，比如VAP的MAC(bssid)
+@conf	: 配置
+@cb	: 回调函数
+*/
 /**
  * wpa_init - Initialize WPA authenticator
  * @addr: Authenticator address
@@ -433,11 +437,13 @@ struct wpa_authenticator * wpa_init(const u8 *addr,
 #endif /* CONFIG_IEEE80211R */
 
 	if (wpa_auth->conf.wpa_gmk_rekey) {
+		/* 组主密钥更新定时器 */
 		eloop_register_timeout(wpa_auth->conf.wpa_gmk_rekey, 0,
 				       wpa_rekey_gmk, wpa_auth, NULL);
 	}
 
 	if (wpa_auth->conf.wpa_group_rekey) {
+		/* 组临时密钥更新定时器 */
 		eloop_register_timeout(wpa_auth->conf.wpa_group_rekey, 0,
 				       wpa_rekey_gtk, wpa_auth, NULL);
 	}
