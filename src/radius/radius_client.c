@@ -907,6 +907,9 @@ u8 radius_client_get_id(struct radius_client_data *radius)
 }
 
 
+/*
+取消挂起的报文
+*/
 /**
  * radius_client_flush - Flush all pending RADIUS client messages
  * @radius: RADIUS client context from radius_client_init()
@@ -931,6 +934,7 @@ void radius_client_flush(struct radius_client_data *radius, int only_auth)
 
 			tmp = entry;
 			entry = entry->next;
+			/* 释放报文 */
 			radius_client_msg_free(tmp);
 			radius->num_msgs--;
 		} else {
@@ -939,6 +943,7 @@ void radius_client_flush(struct radius_client_data *radius, int only_auth)
 		}
 	}
 
+	/* 取消客户端重传定时器 */
 	if (radius->msgs == NULL)
 		eloop_cancel_timeout(radius_client_timer, radius, NULL);
 }
@@ -964,6 +969,16 @@ static void radius_client_update_acct_msgs(struct radius_client_data *radius,
 }
 
 
+/*
+更换RADIUS服务器
+
+@radius	: RADIUS客户端数据
+@nserv	: 新服务器
+@oserv	: 旧服务器
+@sock	: IPv4 socket
+@sock6	: IPv6 socket
+@auth	: 1 - 更换认证服务器; 0 - 更换记账服务器
+*/
 static int
 radius_change_server(struct radius_client_data *radius,
 		     struct hostapd_radius_server *nserv,
@@ -988,6 +1003,9 @@ radius_change_server(struct radius_client_data *radius,
 		       hostapd_ip_txt(&nserv->addr, abuf, sizeof(abuf)),
 		       nserv->port);
 
+	/* 没有旧服务器
+	   密钥不同
+	*/
 	if (!oserv || nserv->shared_secret_len != oserv->shared_secret_len ||
 	    os_memcmp(nserv->shared_secret, oserv->shared_secret,
 		      nserv->shared_secret_len) != 0) {
@@ -1017,12 +1035,14 @@ radius_change_server(struct radius_client_data *radius,
 		entry->next_wait = RADIUS_CLIENT_FIRST_WAIT * 2;
 	}
 
+	/* 重置定时器 */
 	if (radius->msgs) {
 		eloop_cancel_timeout(radius_client_timer, radius, NULL);
 		eloop_register_timeout(RADIUS_CLIENT_FIRST_WAIT, 0,
 				       radius_client_timer, radius, NULL);
 	}
 
+	/* 服务器地址 */
 	switch (nserv->addr.af) {
 	case AF_INET:
 		os_memset(&serv, 0, sizeof(serv));
@@ -1049,6 +1069,7 @@ radius_change_server(struct radius_client_data *radius,
 		return -1;
 	}
 
+	/* 强制绑定本地地址 */
 	if (conf->force_client_addr) {
 		switch (conf->client_addr.af) {
 		case AF_INET:
@@ -1074,12 +1095,14 @@ radius_change_server(struct radius_client_data *radius,
 			return -1;
 		}
 
+		/* 绑定本地地址 */
 		if (bind(sel_sock, cl_addr, claddrlen) < 0) {
 			perror("bind[radius]");
 			return -1;
 		}
 	}
 
+	/* 连接服务器 */
 	if (connect(sel_sock, addr, addrlen) < 0) {
 		perror("connect[radius]");
 		return -1;
@@ -1108,6 +1131,7 @@ radius_change_server(struct radius_client_data *radius,
 	}
 #endif /* CONFIG_NATIVE_WINDOWS */
 
+	/* 用于select的socket */
 	if (auth)
 		radius->auth_sock = sel_sock;
 	else
@@ -1164,11 +1188,15 @@ static int radius_client_disable_pmtu_discovery(int s)
 }
 
 
+/*
+初始化连接认证服务器的客户端
+*/
 static int radius_client_init_auth(struct radius_client_data *radius)
 {
 	struct hostapd_radius_servers *conf = radius->conf;
 	int ok = 0;
 
+	/* 创建UDP socket */
 	radius->auth_serv_sock = socket(PF_INET, SOCK_DGRAM, 0);
 	if (radius->auth_serv_sock < 0)
 		perror("socket[PF_INET,SOCK_DGRAM]");
@@ -1192,6 +1220,7 @@ static int radius_client_init_auth(struct radius_client_data *radius)
 			     radius->auth_serv_sock, radius->auth_serv_sock6,
 			     1);
 
+	/* socket注册进读事件循环 */
 	if (radius->auth_serv_sock >= 0 &&
 	    eloop_register_read_sock(radius->auth_serv_sock,
 				     radius_client_receive, radius,
@@ -1268,6 +1297,9 @@ static int radius_client_init_acct(struct radius_client_data *radius)
 }
 
 
+/*
+RADIUS客户端初始化
+*/
 /**
  * radius_client_init - Initialize RADIUS client
  * @ctx: Callback context to be used in hostapd_logger() calls
