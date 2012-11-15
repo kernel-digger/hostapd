@@ -57,8 +57,12 @@ enum { RADIUS_ATTR_USER_NAME = 1,
        RADIUS_ATTR_STATE = 24,
        RADIUS_ATTR_CLASS = 25,
        RADIUS_ATTR_VENDOR_SPECIFIC = 26,
+	/* 用户可用的剩余时间，以秒为单位
+	   在EAP质询报文中作为用户的重认证时长
+	*/
        RADIUS_ATTR_SESSION_TIMEOUT = 27,
        RADIUS_ATTR_IDLE_TIMEOUT = 28,
+	/* 指定的业务终结方式，例如重认证或者强制用户下线等 */
        RADIUS_ATTR_TERMINATION_ACTION = 29,
        RADIUS_ATTR_CALLED_STATION_ID = 30,
        RADIUS_ATTR_CALLING_STATION_ID = 31,
@@ -239,6 +243,9 @@ static inline int radius_msg_add_attr_int32(struct radius_msg *msg, u8 type,
 	return radius_msg_add_attr(msg, type, (u8 *) &val, 4) != NULL;
 }
 
+/*
+@return	: 0 - 取到值; -1 - 没取到
+*/
 static inline int radius_msg_get_attr_int32(struct radius_msg *msg, u8 type,
 					    u32 *value)
 {

@@ -603,6 +603,9 @@ int radius_msg_add_eap(struct radius_msg *msg, const u8 *data, size_t data_len)
 }
 
 
+/*
+提取RADIUS报文中的EAP-MESSAGE数据
+*/
 u8 *radius_msg_get_eap(struct radius_msg *msg, size_t *eap_len)
 {
 	u8 *eap, *pos;
@@ -613,19 +616,26 @@ u8 *radius_msg_get_eap(struct radius_msg *msg, size_t *eap_len)
 		return NULL;
 
 	len = 0;
+	/* 遍历报文中的属性 */
 	for (i = 0; i < msg->attr_used; i++) {
+		/* 属性头 */
 		attr = radius_get_attr_hdr(msg, i);
+		/* EAP-MESSAGE */
 		if (attr->type == RADIUS_ATTR_EAP_MESSAGE)
+			/* 数据长度 */
 			len += attr->length - sizeof(struct radius_attr_hdr);
 	}
 
+	/* 没有EAP-MESSAGE */
 	if (len == 0)
 		return NULL;
 
+	/* 分配空间 */
 	eap = os_malloc(len);
 	if (eap == NULL)
 		return NULL;
 
+	/* 复制EAP-MESSAGE数据 */
 	pos = eap;
 	for (i = 0; i < msg->attr_used; i++) {
 		attr = radius_get_attr_hdr(msg, i);
@@ -636,6 +646,7 @@ u8 *radius_msg_get_eap(struct radius_msg *msg, size_t *eap_len)
 		}
 	}
 
+	/* 数据长度 */
 	if (eap_len)
 		*eap_len = len;
 
@@ -643,6 +654,16 @@ u8 *radius_msg_get_eap(struct radius_msg *msg, size_t *eap_len)
 }
 
 
+/*
+检查RADIUS报文的AUTHENTICATOR
+
+@msg		:
+@secret		: 密钥
+@secret_len	: 密钥长度
+@req_auth	: 请求报文头中的访问请求认证字，有的话则检查属性中的EAP认证字
+
+@return	: 0 - 有效; 1 - 无效
+*/
 int radius_msg_verify_msg_auth(struct radius_msg *msg, const u8 *secret,
 			       size_t secret_len, const u8 *req_auth)
 {
@@ -670,22 +691,29 @@ int radius_msg_verify_msg_auth(struct radius_msg *msg, const u8 *secret,
 		return 1;
 	}
 
+	/* 记录RADIUS响应报文属性中的认证字 */
 	os_memcpy(orig, attr + 1, MD5_MAC_LEN);
+	/* 清0 */
 	os_memset(attr + 1, 0, MD5_MAC_LEN);
 	if (req_auth) {
+		/* 记录响应认证字 */
 		os_memcpy(orig_authenticator, msg->hdr->authenticator,
 			  sizeof(orig_authenticator));
 		os_memcpy(msg->hdr->authenticator, req_auth,
 			  sizeof(msg->hdr->authenticator));
 	}
+	/* 计算MD5认证字 */
 	hmac_md5(secret, secret_len, wpabuf_head(msg->buf),
 		 wpabuf_len(msg->buf), auth);
+	/* 复制回属性中的认证字 */
 	os_memcpy(attr + 1, orig, MD5_MAC_LEN);
 	if (req_auth) {
+		/* 复制回原来的响应认证字 */
 		os_memcpy(msg->hdr->authenticator, orig_authenticator,
 			  sizeof(orig_authenticator));
 	}
 
+	/* 比较认证字 */
 	if (os_memcmp(orig, auth, MD5_MAC_LEN) != 0) {
 		printf("Invalid Message-Authenticator!\n");
 		return 1;
@@ -695,6 +723,10 @@ int radius_msg_verify_msg_auth(struct radius_msg *msg, const u8 *secret,
 }
 
 
+/*
+
+@auth	: 是否检查RADIUS报文属性中的message authenticator
+*/
 int radius_msg_verify(struct radius_msg *msg, const u8 *secret,
 		      size_t secret_len, struct radius_msg *sent_msg, int auth)
 {

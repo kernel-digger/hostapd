@@ -993,6 +993,9 @@ void ieee802_1x_free_station(struct sta_info *sta)
 
 
 #ifndef CONFIG_NO_RADIUS
+/*
+解析RADIUS报文中的EAP-MESSAGE
+*/
 static void ieee802_1x_decapsulate_radius(struct hostapd_data *hapd,
 					  struct sta_info *sta)
 {
@@ -1012,6 +1015,7 @@ static void ieee802_1x_decapsulate_radius(struct hostapd_data *hapd,
 
 	msg = sm->last_recv_radius;
 
+	/* 提取EAP-MESSAGE数据 */
 	eap = radius_msg_get_eap(msg, &len);
 	if (eap == NULL) {
 		/* RFC 3579, Chap. 2.6.3:
@@ -1033,6 +1037,7 @@ static void ieee802_1x_decapsulate_radius(struct hostapd_data *hapd,
 		return;
 	}
 
+	/* EAP认证类型 */
 	if (len > sizeof(*hdr))
 		eap_type = eap[sizeof(*hdr)];
 
@@ -1071,6 +1076,7 @@ static void ieee802_1x_decapsulate_radius(struct hostapd_data *hapd,
 	sm->eap_if->aaaEapReq = TRUE;
 
 	wpabuf_free(sm->eap_if->aaaEapReqData);
+	/* 记录EAP-MESSAGE数据 */
 	sm->eap_if->aaaEapReqData = wpabuf_alloc_ext_data(eap, len);
 }
 
@@ -1239,6 +1245,9 @@ ieee802_1x_search_radius_identifier(struct hostapd_data *hapd, u8 identifier)
 }
 
 
+/*
+处理RADIUS认证服务器发来的RADIUS报文
+*/
 /**
  * ieee802_1x_receive_auth - Process RADIUS frames from Authentication Server
  * @msg: RADIUS response message
@@ -1273,13 +1282,17 @@ ieee802_1x_receive_auth(struct radius_msg *msg, struct radius_msg *req,
 
 	/* RFC 2869, Ch. 5.13: valid Message-Authenticator attribute MUST be
 	 * present when packet contains an EAP-Message attribute */
+	/* 拒绝报文 */
 	if (hdr->code == RADIUS_CODE_ACCESS_REJECT &&
+	    /* 没有RADIUS_ATTR_MESSAGE_AUTHENTICATOR属性 */
 	    radius_msg_get_attr(msg, RADIUS_ATTR_MESSAGE_AUTHENTICATOR, NULL,
 				0) < 0 &&
+	    /* 没有RADIUS_ATTR_EAP_MESSAGE属性 */
 	    radius_msg_get_attr(msg, RADIUS_ATTR_EAP_MESSAGE, NULL, 0) < 0) {
 		wpa_printf(MSG_DEBUG, "Allowing RADIUS Access-Reject without "
 			   "Message-Authenticator since it does not include "
 			   "EAP-Message");
+	/* 检查认证字 */
 	} else if (radius_msg_verify(msg, shared_secret, shared_secret_len,
 				     req, 1)) {
 		printf("Incoming RADIUS packet did not have correct "
@@ -1287,6 +1300,7 @@ ieee802_1x_receive_auth(struct radius_msg *msg, struct radius_msg *req,
 		return RADIUS_RX_INVALID_AUTHENTICATOR;
 	}
 
+	/* 检查code有效性 */
 	if (hdr->code != RADIUS_CODE_ACCESS_ACCEPT &&
 	    hdr->code != RADIUS_CODE_ACCESS_REJECT &&
 	    hdr->code != RADIUS_CODE_ACCESS_CHALLENGE) {
@@ -1308,6 +1322,7 @@ ieee802_1x_receive_auth(struct radius_msg *msg, struct radius_msg *req,
 				      &termination_action))
 		termination_action = RADIUS_TERMINATION_ACTION_DEFAULT;
 
+	/* 记账间隔 */
 	if (hapd->conf->acct_interim_interval == 0 &&
 	    hdr->code == RADIUS_CODE_ACCESS_ACCEPT &&
 	    radius_msg_get_attr_int32(msg, RADIUS_ATTR_ACCT_INTERIM_INTERVAL,

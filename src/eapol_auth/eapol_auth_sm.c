@@ -934,6 +934,7 @@ restart:
 					   "but no aaaEapRespData available");
 				return;
 			}
+			/* ieee802_1x_aaa_send */
 			sm->eapol->cb.aaa_send(
 				sm->eapol->conf.ctx, sm->sta,
 				wpabuf_head(sm->eap_if->aaaEapRespData),
