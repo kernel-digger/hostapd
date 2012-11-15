@@ -1102,6 +1102,9 @@ static void eapol_auth_conf_free(struct eapol_auth_config *conf)
 }
 
 
+/*
+eapol认证者初始化
+*/
 struct eapol_authenticator * eapol_auth_init(struct eapol_auth_config *conf,
 					     struct eapol_auth_cb *cb)
 {
@@ -1111,6 +1114,7 @@ struct eapol_authenticator * eapol_auth_init(struct eapol_auth_config *conf,
 	if (eapol == NULL)
 		return NULL;
 
+	/* 复制配置信息 */
 	if (eapol_auth_conf_clone(&eapol->conf, conf) < 0) {
 		os_free(eapol);
 		return NULL;
@@ -1121,6 +1125,7 @@ struct eapol_authenticator * eapol_auth_init(struct eapol_auth_config *conf,
 		eapol->default_wep_key_idx = 1;
 	}
 
+	/* 设置回调函数 */
 	eapol->cb.eapol_send = cb->eapol_send;
 	eapol->cb.aaa_send = cb->aaa_send;
 	eapol->cb.finished = cb->finished;

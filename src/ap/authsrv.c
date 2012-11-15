@@ -133,6 +133,9 @@ static int hostapd_setup_radius_srv(struct hostapd_data *hapd)
 #endif /* RADIUS_SERVER */
 
 
+/*
+RADIUS SERVER≥ı ºªØ
+*/
 int authsrv_init(struct hostapd_data *hapd)
 {
 #ifdef EAP_TLS_FUNCS

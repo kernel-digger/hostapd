@@ -253,6 +253,9 @@ static void radius_client_msg_free(struct radius_msg_list *req)
 }
 
 
+/*
+注册RADIUS报文的处理函数
+*/
 /**
  * radius_client_register - Register a RADIUS client RX handler
  * @radius: RADIUS client context from radius_client_init()
@@ -690,6 +693,14 @@ int radius_client_send(struct radius_client_data *radius,
 }
 
 
+/*
+接收RADIUS服务器发来的报文
+由radius_client_init_auth和radius_client_init_acct注册进事件循环
+
+@sock		: socket
+@eloop_ctx	: radius_client_data
+@sock_ctx	: RADIUS_ACCT or RADIUS_AUTH
+*/
 static void radius_client_receive(int sock, void *eloop_ctx, void *sock_ctx)
 {
 	struct radius_client_data *radius = eloop_ctx;

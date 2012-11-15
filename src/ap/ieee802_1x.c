@@ -1736,10 +1736,12 @@ int ieee802_1x_init(struct hostapd_data *hapd)
 	cb.tx_key = _ieee802_1x_tx_key;
 	cb.eapol_event = ieee802_1x_eapol_event;
 
+	/* eapol认证者初始化 */
 	hapd->eapol_auth = eapol_auth_init(&conf, &cb);
 	if (hapd->eapol_auth == NULL)
 		return -1;
 
+	/* 使能8021x */
 	if ((hapd->conf->ieee802_1x || hapd->conf->wpa) &&
 	    hostapd_set_drv_ieee8021x(hapd, hapd->conf->iface, 1))
 		return -1;
