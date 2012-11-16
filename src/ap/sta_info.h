@@ -71,6 +71,10 @@ struct sta_info {
 	u16 deauth_reason;
 	u16 disassoc_reason;
 
+	/* hostapd_notif_assoc => hostapd_new_assoc_sta
+		=> ieee802_1x_new_station => ieee802_1x_alloc_eapol_sm
+		=> eapol_auth_alloc
+	*/
 	/* IEEE 802.1X related data */
 	struct eapol_state_machine *eapol_sm;
 
@@ -91,6 +95,7 @@ struct sta_info {
 
 	u8 *challenge; /* IEEE 802.11 Shared Key Authentication Challenge */
 
+	/* hostapd_notif_assoc => wpa_auth_sta_init */
 	struct wpa_state_machine *wpa_sm;
 	struct rsn_preauth_interface *preauth_iface;
 

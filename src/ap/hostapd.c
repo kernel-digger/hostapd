@@ -953,6 +953,7 @@ void hostapd_new_assoc_sta(struct hostapd_data *hapd, struct sta_info *sta,
 		return;
 	}
 
+	/* 取消STA在其他bss上的关联状态机 */
 	hostapd_prune_associations(hapd, sta->addr);
 
 	/* IEEE 802.11F (IAPP) */

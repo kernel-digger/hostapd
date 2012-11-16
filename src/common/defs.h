@@ -33,7 +33,9 @@ typedef enum { FALSE = 0, TRUE = 1 } Boolean;
 #define WPA_CIPHER_AES_128_CMAC BIT(5)
 #endif /* CONFIG_IEEE80211W */
 
+/* WPA-EAP */
 #define WPA_KEY_MGMT_IEEE8021X BIT(0)
+/* WPA-PSK */
 #define WPA_KEY_MGMT_PSK BIT(1)
 #define WPA_KEY_MGMT_NONE BIT(2)
 #define WPA_KEY_MGMT_IEEE8021X_NO_WPA BIT(3)

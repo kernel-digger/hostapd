@@ -37,6 +37,16 @@
 #include "ap_config.h"
 
 
+/*
+处理STA的关联信息
+
+@hapd		: bss数据
+@addr		: STA MAC
+@req_ies	: 关联帧中的IE
+@req_ies_len: IE长度
+@reassoc	: 0 - 关联; 1 - 重关联
+
+*/
 int hostapd_notif_assoc(struct hostapd_data *hapd, const u8 *addr,
 			const u8 *req_ies, size_t req_ies_len, int reassoc)
 {
@@ -64,6 +74,7 @@ int hostapd_notif_assoc(struct hostapd_data *hapd, const u8 *addr,
 	hostapd_logger(hapd, addr, HOSTAPD_MODULE_IEEE80211,
 		       HOSTAPD_LEVEL_INFO, "associated");
 
+	/* 解析IE信息 */
 	ieee802_11_parse_elems(req_ies, req_ies_len, &elems, 0);
 	if (elems.wps_ie) {
 		ie = elems.wps_ie - 2;
@@ -84,8 +95,11 @@ int hostapd_notif_assoc(struct hostapd_data *hapd, const u8 *addr,
 			   "(Re)AssocReq");
 	}
 
+	/* 查找sta_info */
 	sta = ap_get_sta(hapd, addr);
+	/* 找到 */
 	if (sta) {
+		/* 停止记账定时器 */
 		accounting_sta_stop(hapd, sta);
 
 		/*
@@ -94,10 +108,12 @@ int hostapd_notif_assoc(struct hostapd_data *hapd, const u8 *addr,
 		 */
 		sta->timeout_next = STA_NULLFUNC;
 	} else {
+		/* 新增sta_info */
 		sta = ap_sta_add(hapd, addr);
 		if (sta == NULL)
 			return -1;
 	}
+	/* 去掉WPS标识位 */
 	sta->flags &= ~(WLAN_STA_WPS | WLAN_STA_MAYBE_WPS | WLAN_STA_WPS2);
 
 #ifdef CONFIG_P2P
@@ -108,7 +124,9 @@ int hostapd_notif_assoc(struct hostapd_data *hapd, const u8 *addr,
 	}
 #endif /* CONFIG_P2P */
 
+	/* 该bss启用了WPA */
 	if (hapd->conf->wpa) {
+		/* STA关联帧中没有WPA IE信息 */
 		if (ie == NULL || ielen == 0) {
 #ifdef CONFIG_WPS
 			if (hapd->conf->wps_state) {
@@ -142,6 +160,7 @@ int hostapd_notif_assoc(struct hostapd_data *hapd, const u8 *addr,
 		}
 #endif /* CONFIG_WPS */
 
+		/* 创建WPA状态机 */
 		if (sta->wpa_sm == NULL)
 			sta->wpa_sm = wpa_auth_sta_init(hapd->wpa_auth,
 							sta->addr);
@@ -150,6 +169,7 @@ int hostapd_notif_assoc(struct hostapd_data *hapd, const u8 *addr,
 				   "machine");
 			return -1;
 		}
+		/* 根据bss的配置检查STA的WPA IE信息 */
 		res = wpa_validate_wpa_ie(hapd->wpa_auth, sta->wpa_sm,
 					  ie, ielen, NULL, 0);
 		if (res != WPA_IE_OK) {
@@ -203,7 +223,9 @@ int hostapd_notif_assoc(struct hostapd_data *hapd, const u8 *addr,
 skip_wpa_check:
 #endif /* CONFIG_WPS */
 
+	/* 是否为新关联的STA */
 	new_assoc = (sta->flags & WLAN_STA_ASSOC) == 0;
+	/* 标记STA为认证和关联 */
 	sta->flags |= WLAN_STA_AUTH | WLAN_STA_ASSOC;
 	wpa_auth_sm_event(sta->wpa_sm, WPA_ASSOC);
 
@@ -474,6 +496,9 @@ static void hostapd_event_eapol_rx(struct hostapd_data *hapd, const u8 *src,
 }
 
 
+/*
+处理请求者事件
+*/
 void wpa_supplicant_event(void *ctx, enum wpa_event_type event,
 			  union wpa_event_data *data)
 {

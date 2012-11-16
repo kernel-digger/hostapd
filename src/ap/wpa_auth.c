@@ -1388,6 +1388,7 @@ void wpa_remove_ptk(struct wpa_state_machine *sm)
 	os_memset(&sm->PTK, 0, sizeof(sm->PTK));
 	wpa_auth_set_key(sm->wpa_auth, 0, WPA_ALG_NONE, sm->addr, 0, NULL, 0);
 	sm->pairwise_set = FALSE;
+	/* 取消定时器 */
 	eloop_cancel_timeout(wpa_rekey_ptk, sm->wpa_auth, sm);
 }
 
@@ -1464,6 +1465,7 @@ int wpa_auth_sm_event(struct wpa_state_machine *sm, wpa_event event)
 		remove_ptk = 0;
 #endif /* CONFIG_IEEE80211W */
 
+	/* 移除旧的PTK */
 	if (remove_ptk) {
 		sm->PTK_valid = FALSE;
 		os_memset(&sm->PTK, 0, sizeof(sm->PTK));

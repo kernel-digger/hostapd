@@ -44,6 +44,7 @@ static int ieee802_11_parse_vendor_specific(const u8 *pos, size_t elen,
 		 * subtyped */
 		switch (pos[3]) {
 		case 1:
+			/* WPA1 IE信息 */
 			/* Microsoft OUI (00:50:F2) with OUI Type 1:
 			 * real WPA information element */
 			elems->wpa_ie = pos;
@@ -139,6 +140,10 @@ static int ieee802_11_parse_vendor_specific(const u8 *pos, size_t elen,
 }
 
 
+/*
+解析管理帧中的IE信息
+在@elems中记录各个IE的位置
+*/
 /**
  * ieee802_11_parse_elems - Parse information elements in management frames
  * @start: Pointer to the start of IEs
@@ -223,6 +228,7 @@ ParseRes ieee802_11_parse_elems(const u8 *start, size_t len,
 				unknown++;
 			break;
 		case WLAN_EID_RSN:
+			/* WPA2 IE信息 */
 			elems->rsn_ie = pos;
 			elems->rsn_ie_len = elen;
 			break;

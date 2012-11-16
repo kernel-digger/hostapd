@@ -647,6 +647,7 @@ ieee802_1x_alloc_eapol_sm(struct hostapd_data *hapd, struct sta_info *sta)
 	int flags = 0;
 	if (sta->flags & WLAN_STA_PREAUTH)
 		flags |= EAPOL_SM_PREAUTH;
+	/* 标记启用了WPA状态机 */
 	if (sta->wpa_sm) {
 		flags |= EAPOL_SM_USES_WPA;
 		if (wpa_auth_sta_get_pmksa(sta->wpa_sm))
@@ -865,6 +866,7 @@ void ieee802_1x_new_station(struct hostapd_data *hapd, struct sta_info *sta)
 	}
 #endif /* CONFIG_WPS */
 
+	/* 没有开启8021x认证 */
 	if (!force_1x && !hapd->conf->ieee802_1x) {
 		wpa_printf(MSG_DEBUG, "IEEE 802.1X: Ignore STA - "
 			   "802.1X not enabled or forced for WPS");
@@ -876,7 +878,9 @@ void ieee802_1x_new_station(struct hostapd_data *hapd, struct sta_info *sta)
 		return;
 	}
 
+	/* 密钥管理方式 */
 	key_mgmt = wpa_auth_sta_key_mgmt(sta->wpa_sm);
+	/* 配置为WPA-PSK */
 	if (key_mgmt != -1 && wpa_key_mgmt_wpa_psk(key_mgmt)) {
 		wpa_printf(MSG_DEBUG, "IEEE 802.1X: Ignore STA - using PSK");
 		/*
@@ -887,6 +891,7 @@ void ieee802_1x_new_station(struct hostapd_data *hapd, struct sta_info *sta)
 		return;
 	}
 
+	/* 创建8021x认证状态机 */
 	if (sta->eapol_sm == NULL) {
 		hostapd_logger(hapd, sta->addr, HOSTAPD_MODULE_IEEE8021X,
 			       HOSTAPD_LEVEL_DEBUG, "start authentication");

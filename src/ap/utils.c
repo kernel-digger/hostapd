@@ -49,6 +49,9 @@ struct prune_data {
 	const u8 *addr;
 };
 
+/*
+取消STA在其他bss上的关联处理状态机
+*/
 static int prune_associations(struct hostapd_iface *iface, void *ctx)
 {
 	struct prune_data *data = ctx;
@@ -58,6 +61,7 @@ static int prune_associations(struct hostapd_iface *iface, void *ctx)
 
 	for (j = 0; j < iface->num_bss; j++) {
 		ohapd = iface->bss[j];
+		/* 跳过当前关联的bss */
 		if (ohapd == data->hapd)
 			continue;
 		osta = ap_get_sta(ohapd, data->addr);
@@ -70,6 +74,9 @@ static int prune_associations(struct hostapd_iface *iface, void *ctx)
 	return 0;
 }
 
+/*
+取消STA在其他bss上的关联状态机
+*/
 /**
  * hostapd_prune_associations - Remove extraneous associations
  * @hapd: Pointer to BSS data for the most recent association
@@ -83,6 +90,7 @@ void hostapd_prune_associations(struct hostapd_data *hapd, const u8 *addr)
 	struct prune_data data;
 	data.hapd = hapd;
 	data.addr = addr;
+	/* 在每个接口上调用回调函数prune_associations */
 	if (hapd->iface->for_each_interface)
 		hapd->iface->for_each_interface(hapd->iface->interfaces,
 						prune_associations, &data);

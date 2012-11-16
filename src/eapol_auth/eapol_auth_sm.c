@@ -842,6 +842,7 @@ eapol_auth_alloc(struct eapol_authenticator *eapol, const u8 *addr,
 	}
 	sm->eap_if = eap_get_interface(sm->eap);
 
+	/* ×´Ì¬»ú³õÊ¼»¯ */
 	eapol_auth_initialize(sm);
 
 	return sm;

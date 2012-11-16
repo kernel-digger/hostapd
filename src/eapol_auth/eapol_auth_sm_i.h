@@ -32,6 +32,7 @@ typedef unsigned int Counter;
  */
 struct eapol_authenticator {
 	struct eapol_auth_config conf;
+	/* ieee802_1x_init => eapol_auth_init中设置回调函数 */
 	struct eapol_auth_cb cb;
 
 	u8 *default_wep_key;
@@ -170,6 +171,7 @@ struct eapol_state_machine {
 	u8 *eapol_key_crypt;
 	size_t eapol_key_crypt_len;
 
+	/* eapol_auth_alloc => eap_server_sm_init */
 	struct eap_sm *eap;
 
 	Boolean initializing; /* in process of initializing state machines */
@@ -177,6 +179,7 @@ struct eapol_state_machine {
 
 	struct eapol_authenticator *eapol;
 
+	/* struct sta_info */
 	void *sta; /* station context pointer to use in callbacks */
 };
 

@@ -104,6 +104,7 @@ struct wpa_state_machine {
 		WPA_VERSION_WPA2 = 2 /* WPA2 / IEEE 802.11i */
 	} wpa;
 	int pairwise; /* Pairwise cipher suite, WPA_CIPHER_* */
+	/* WPA_KEY_MGMT_IEEE8021X WPA_KEY_MGMT_PSK */
 	int wpa_key_mgmt; /* the selected WPA_KEY_MGMT_* */
 	struct rsn_pmksa_cache_entry *pmksa;
 

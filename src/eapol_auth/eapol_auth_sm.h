@@ -20,6 +20,9 @@
 #define EAPOL_SM_USES_WPA BIT(2)
 #define EAPOL_SM_FROM_PMKSA_CACHE BIT(3)
 
+/*
+相关配置来自hostapd_bss_config
+*/
 struct eapol_auth_config {
 	int eap_reauth_period;
 	int wpa;
