@@ -23,9 +23,21 @@
  * without this additional debug info.
  */
 
+/*
+状态机宏定义
+
+使用STATE_MACHINE_DATA定义状态机结构，比如struct wpa_state_machine
+STATE_MACHINE_DEBUG_PREFIX调试信息前缀
+STATE_MACHINE_ADDR调试信息中使用的MAC地址
+
+*/
+
 #ifndef STATE_MACHINE_H
 #define STATE_MACHINE_H
 
+/*
+声明状态机的状态函数
+*/
 /**
  * SM_STATE - Declaration of a state machine function
  * @machine: State machine name
@@ -39,6 +51,9 @@
 static void sm_ ## machine ## _ ## state ## _Enter(STATE_MACHINE_DATA *sm, \
 	int global)
 
+/*
+切换状态机的状态
+*/
 /**
  * SM_ENTRY - State machine function entry point
  * @machine: State machine name
@@ -95,6 +110,9 @@ if (!global || sm->data ## _ ## state != machine ## _ ## _state) { \
 } \
 sm->data ## _ ## state = machine ## _ ## _state;
 
+/*
+调用由SM_STATE定义的状态函数
+*/
 /**
  * SM_ENTER - Enter a new state machine state
  * @machine: State machine name
@@ -120,6 +138,9 @@ sm_ ## machine ## _ ## state ## _Enter(sm, 0)
 #define SM_ENTER_GLOBAL(machine, state) \
 sm_ ## machine ## _ ## state ## _Enter(sm, 1)
 
+/*
+声明状态机的分支函数
+*/
 /**
  * SM_STEP - Declaration of a state machine step function
  * @machine: State machine name
@@ -132,6 +153,9 @@ sm_ ## machine ## _ ## state ## _Enter(sm, 1)
 #define SM_STEP(machine) \
 static void sm_ ## machine ## _Step(STATE_MACHINE_DATA *sm)
 
+/*
+调用由SM_STEP定义的状态机分支函数
+*/
 /**
  * SM_STEP_RUN - Call the state machine step function
  * @machine: State machine name
