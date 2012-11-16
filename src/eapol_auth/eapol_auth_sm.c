@@ -912,6 +912,7 @@ restart:
 	    prev_ctrl_dir != sm->ctrl_dir_state) {
 		if (--max_steps > 0)
 			goto restart;
+		/* 加入定时器，退出当前调用路径 */
 		/* Re-run from eloop timeout */
 		eapol_auth_step(sm);
 		return;

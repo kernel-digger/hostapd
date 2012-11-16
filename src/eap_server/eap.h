@@ -68,8 +68,11 @@ struct eap_eapol_interface {
 	/* AAA interface to full authenticator variables */
 	Boolean aaaEapReq;
 	Boolean aaaEapNoReq;
+	/* 认证成功 */
 	Boolean aaaSuccess;
+	/* 认证拒绝 */
 	Boolean aaaFail;
+	/* 认证服务器RADIUS报文中的EAP-MESSAGE数据 */
 	struct wpabuf *aaaEapReqData;
 	u8 *aaaEapKeyData;
 	size_t aaaEapKeyDataLen;

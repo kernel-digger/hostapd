@@ -1308,10 +1308,14 @@ ieee802_1x_receive_auth(struct radius_msg *msg, struct radius_msg *req,
 		return RADIUS_RX_UNKNOWN;
 	}
 
+	/* 已收到一个响应报文
+	   标记为-1，在上面的ieee802_1x_search_radius_identifier中不再匹配其他的响应报文
+	*/
 	sm->radius_identifier = -1;
 	wpa_printf(MSG_DEBUG, "RADIUS packet matching with station " MACSTR,
 		   MAC2STR(sta->addr));
 
+	/* 记录为状态机最后收到的报文 */
 	radius_msg_free(sm->last_recv_radius);
 	sm->last_recv_radius = msg;
 
@@ -1372,10 +1376,13 @@ ieee802_1x_receive_auth(struct radius_msg *msg, struct radius_msg *req,
 		/* RFC 3580, Ch. 3.17 */
 		if (session_timeout_set && termination_action ==
 		    RADIUS_TERMINATION_ACTION_RADIUS_REQUEST) {
+			/* 到期重认证 */
 			sm->reAuthPeriod = session_timeout;
 		} else if (session_timeout_set)
+			/* 到期终止会话 */
 			ap_sta_session_timeout(hapd, sta, session_timeout);
 
+		/* 认证成功 */
 		sm->eap_if->aaaSuccess = TRUE;
 		override_eapReq = 1;
 		ieee802_1x_get_keys(hapd, sta, msg, req, shared_secret,
@@ -1416,10 +1423,12 @@ ieee802_1x_receive_auth(struct radius_msg *msg, struct radius_msg *req,
 		break;
 	}
 
+	/* 提取EAP-MESSAGE数据到sm->eap_if->aaaEapReqData中 */
 	ieee802_1x_decapsulate_radius(hapd, sta);
 	if (override_eapReq)
 		sm->eap_if->aaaEapReq = FALSE;
 
+	/* 状态机分支函数 */
 	eapol_auth_step(sm);
 
 	return RADIUS_RX_QUEUED;

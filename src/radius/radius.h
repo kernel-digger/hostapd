@@ -97,7 +97,9 @@ enum { RADIUS_ATTR_USER_NAME = 1,
 
 
 /* Termination-Action */
+/* 终止会话 */
 #define RADIUS_TERMINATION_ACTION_DEFAULT 0
+/* 进行重认证 */
 #define RADIUS_TERMINATION_ACTION_RADIUS_REQUEST 1
 
 /* NAS-Port-Type */
