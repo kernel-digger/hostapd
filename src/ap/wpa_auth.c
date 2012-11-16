@@ -747,6 +747,9 @@ static void wpa_receive_error_report(struct wpa_authenticator *wpa_auth,
 }
 
 
+/*
+处理EAPOL-KEY报文
+*/
 void wpa_receive(struct wpa_authenticator *wpa_auth,
 		 struct wpa_state_machine *sm,
 		 u8 *data, size_t data_len)
@@ -771,6 +774,7 @@ void wpa_receive(struct wpa_authenticator *wpa_auth,
 	hdr = (struct ieee802_1x_hdr *) data;
 	key = (struct wpa_eapol_key *) (hdr + 1);
 	key_info = WPA_GET_BE16(key->key_info);
+	/* 检查长度 */
 	key_data_length = WPA_GET_BE16(key->key_data_length);
 	wpa_printf(MSG_DEBUG, "WPA: Received EAPOL-Key from " MACSTR
 		   " key_info=0x%x type=%u key_data_length=%u",
@@ -784,6 +788,7 @@ void wpa_receive(struct wpa_authenticator *wpa_auth,
 		return;
 	}
 
+	/* 检查WPA版本 */
 	if (sm->wpa == WPA_VERSION_WPA2) {
 		if (key->type == EAPOL_KEY_TYPE_WPA) {
 			/*
