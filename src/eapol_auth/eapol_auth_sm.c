@@ -534,6 +534,9 @@ SM_STATE(BE_AUTH, IGNORE)
 }
 
 
+/*
+static void sm_BE_AUTH_Step(struct eapol_state_machine *sm)
+*/
 SM_STEP(BE_AUTH)
 {
 	if (sm->portControl != Auto || sm->initialize || sm->authAbort) {
@@ -865,6 +868,7 @@ void eapol_auth_free(struct eapol_state_machine *sm)
 static int eapol_sm_sta_entry_alive(struct eapol_authenticator *eapol,
 				    const u8 *addr)
 {
+	/* ieee802_1x_sta_entry_alive */
 	return eapol->cb.sta_entry_alive(eapol->conf.ctx, addr);
 }
 

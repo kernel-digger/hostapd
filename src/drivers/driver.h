@@ -3493,6 +3493,12 @@ static inline void drv_event_disassoc(void *ctx, const u8 *addr)
 	wpa_supplicant_event(ctx, EVENT_DISASSOC, &event);
 }
 
+/*
+@ctx	: hostapd_data
+@src	: 源MAC
+@data	: 数据，不含2层头
+@data_len: 数据长度
+*/
 static inline void drv_event_eapol_rx(void *ctx, const u8 *src, const u8 *data,
 				      size_t data_len)
 {

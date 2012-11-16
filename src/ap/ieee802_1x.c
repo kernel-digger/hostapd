@@ -658,6 +658,9 @@ ieee802_1x_alloc_eapol_sm(struct hostapd_data *hapd, struct sta_info *sta)
 }
 
 
+/*
+处理STA发来的EAPOL报文
+*/
 /**
  * ieee802_1x_receive - Process the EAPOL frames from the Supplicant
  * @hapd: hostapd BSS data
@@ -677,6 +680,7 @@ void ieee802_1x_receive(struct hostapd_data *hapd, const u8 *sa, const u8 *buf,
 	struct rsn_pmksa_cache_entry *pmksa;
 	int key_mgmt;
 
+	/* 该bss没有配置8021x认证 */
 	if (!hapd->conf->ieee802_1x && !hapd->conf->wpa &&
 	    !hapd->conf->wps_state)
 		return;
@@ -684,6 +688,7 @@ void ieee802_1x_receive(struct hostapd_data *hapd, const u8 *sa, const u8 *buf,
 	wpa_printf(MSG_DEBUG, "IEEE 802.1X: %lu bytes from " MACSTR,
 		   (unsigned long) len, MAC2STR(sa));
 	sta = ap_get_sta(hapd, sa);
+	/* STA未关联 */
 	if (!sta || (!(sta->flags & (WLAN_STA_ASSOC | WLAN_STA_PREAUTH)) &&
 		     !(hapd->iface->drv_flags & WPA_DRIVER_FLAGS_WIRED))) {
 		wpa_printf(MSG_DEBUG, "IEEE 802.1X data frame from not "
@@ -691,6 +696,7 @@ void ieee802_1x_receive(struct hostapd_data *hapd, const u8 *sa, const u8 *buf,
 		return;
 	}
 
+	/* 检查报文长度 */
 	if (len < sizeof(*hdr)) {
 		printf("   too short IEEE 802.1X packet\n");
 		return;
@@ -718,6 +724,7 @@ void ieee802_1x_receive(struct hostapd_data *hapd, const u8 *sa, const u8 *buf,
 		sta->eapol_sm->dot1xAuthEapolFramesRx++;
 	}
 
+	/* 判断是否为EAPOL-KEY报文 */
 	key = (struct ieee802_1x_eapol_key *) (hdr + 1);
 	if (datalen >= sizeof(struct ieee802_1x_eapol_key) &&
 	    hdr->type == IEEE802_1X_TYPE_EAPOL_KEY &&
