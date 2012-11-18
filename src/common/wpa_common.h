@@ -249,6 +249,7 @@ struct wpa_ie_hdr {
  * Management Group Cipher Suite (4 octets) (default: AES-128-CMAC)
  */
 
+/* IEEE Std 802.11-2012 8.4.2.27 */
 struct rsn_ie_hdr {
 	u8 elem_id; /* WLAN_EID_RSN */
 	u8 len;
