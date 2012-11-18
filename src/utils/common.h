@@ -269,8 +269,10 @@ static inline unsigned int wpa_swap_32(unsigned int v)
 		(a)[2] = (u8) (((u32) (val)) & 0xff);		\
 	} while (0)
 
+/* 以大端序取出4个字节整数 */
 #define WPA_GET_BE32(a) ((((u32) (a)[0]) << 24) | (((u32) (a)[1]) << 16) | \
 			 (((u32) (a)[2]) << 8) | ((u32) (a)[3]))
+/* 将整数@val以大端序存入@a指向的地址 */
 #define WPA_PUT_BE32(a, val)					\
 	do {							\
 		(a)[0] = (u8) ((((u32) (val)) >> 24) & 0xff);	\
@@ -279,8 +281,10 @@ static inline unsigned int wpa_swap_32(unsigned int v)
 		(a)[3] = (u8) (((u32) (val)) & 0xff);		\
 	} while (0)
 
+/* 以小端序取出4个字节整数 */
 #define WPA_GET_LE32(a) ((((u32) (a)[3]) << 24) | (((u32) (a)[2]) << 16) | \
 			 (((u32) (a)[1]) << 8) | ((u32) (a)[0]))
+/* 将整数@val以小端序存入@a指向的地址 */
 #define WPA_PUT_LE32(a, val)					\
 	do {							\
 		(a)[3] = (u8) ((((u32) (val)) >> 24) & 0xff);	\

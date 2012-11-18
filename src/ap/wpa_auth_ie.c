@@ -446,6 +446,7 @@ int wpa_validate_wpa_ie(struct wpa_authenticator *wpa_auth,
 	if (version == WPA_PROTO_RSN) {
 		res = wpa_parse_wpa_ie_rsn(wpa_ie, wpa_ie_len, &data);
 
+		/* 密钥管理方式 */
 		selector = RSN_AUTH_KEY_MGMT_UNSPEC_802_1X;
 		if (0) {
 		}
@@ -467,6 +468,7 @@ int wpa_validate_wpa_ie(struct wpa_authenticator *wpa_auth,
 			selector = RSN_AUTH_KEY_MGMT_PSK_OVER_802_1X;
 		wpa_auth->dot11RSNAAuthenticationSuiteSelected = selector;
 
+		/* 成对密码套件 */
 		selector = RSN_CIPHER_SUITE_CCMP;
 		if (data.pairwise_cipher & WPA_CIPHER_CCMP)
 			selector = RSN_CIPHER_SUITE_CCMP;
@@ -480,6 +482,7 @@ int wpa_validate_wpa_ie(struct wpa_authenticator *wpa_auth,
 			selector = RSN_CIPHER_SUITE_NONE;
 		wpa_auth->dot11RSNAPairwiseCipherSelected = selector;
 
+		/* 组密码套件 */
 		selector = RSN_CIPHER_SUITE_CCMP;
 		if (data.group_cipher & WPA_CIPHER_CCMP)
 			selector = RSN_CIPHER_SUITE_CCMP;
@@ -495,6 +498,7 @@ int wpa_validate_wpa_ie(struct wpa_authenticator *wpa_auth,
 	} else {
 		res = wpa_parse_wpa_ie_wpa(wpa_ie, wpa_ie_len, &data);
 
+		/* 密钥管理方式 */
 		selector = WPA_AUTH_KEY_MGMT_UNSPEC_802_1X;
 		if (data.key_mgmt & WPA_KEY_MGMT_IEEE8021X)
 			selector = WPA_AUTH_KEY_MGMT_UNSPEC_802_1X;
@@ -502,6 +506,7 @@ int wpa_validate_wpa_ie(struct wpa_authenticator *wpa_auth,
 			selector = WPA_AUTH_KEY_MGMT_PSK_OVER_802_1X;
 		wpa_auth->dot11RSNAAuthenticationSuiteSelected = selector;
 
+		/* 成对密码套件 */
 		selector = WPA_CIPHER_SUITE_TKIP;
 		if (data.pairwise_cipher & WPA_CIPHER_CCMP)
 			selector = WPA_CIPHER_SUITE_CCMP;
@@ -515,6 +520,7 @@ int wpa_validate_wpa_ie(struct wpa_authenticator *wpa_auth,
 			selector = WPA_CIPHER_SUITE_NONE;
 		wpa_auth->dot11RSNAPairwiseCipherSelected = selector;
 
+		/* 组密码套件 */
 		selector = WPA_CIPHER_SUITE_TKIP;
 		if (data.group_cipher & WPA_CIPHER_CCMP)
 			selector = WPA_CIPHER_SUITE_CCMP;
@@ -673,11 +679,13 @@ int wpa_validate_wpa_ie(struct wpa_authenticator *wpa_auth,
 	}
 
 	if (sm->wpa_ie == NULL || sm->wpa_ie_len < wpa_ie_len) {
+		/* 分配空间 */
 		os_free(sm->wpa_ie);
 		sm->wpa_ie = os_malloc(wpa_ie_len);
 		if (sm->wpa_ie == NULL)
 			return WPA_ALLOC_FAIL;
 	}
+	/* 复制IE信息 */
 	os_memcpy(sm->wpa_ie, wpa_ie, wpa_ie_len);
 	sm->wpa_ie_len = wpa_ie_len;
 

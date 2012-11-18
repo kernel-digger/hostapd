@@ -31,6 +31,10 @@
 #define RSN_SELECTOR_LEN 4
 #define RSN_VERSION 1
 
+/*
+把OUI和Suite Type组合成一个32位数
+便于进行判断
+*/
 #define RSN_SELECTOR(a, b, c, d) \
 	((((u32) (a)) << 24) | (((u32) (b)) << 16) | (((u32) (c)) << 8) | \
 	 (u32) (d))
@@ -58,6 +62,9 @@
 #define RSN_AUTH_KEY_MGMT_PSK_SHA256 RSN_SELECTOR(0x00, 0x0f, 0xac, 6)
 #define RSN_AUTH_KEY_MGMT_TPK_HANDSHAKE RSN_SELECTOR(0x00, 0x0f, 0xac, 7)
 
+/* IEEE Std 802.11-2012, 8.4.2.27.2
+密码套件选择符定义
+*/
 #define RSN_CIPHER_SUITE_NONE RSN_SELECTOR(0x00, 0x0f, 0xac, 0)
 #define RSN_CIPHER_SUITE_WEP40 RSN_SELECTOR(0x00, 0x0f, 0xac, 1)
 #define RSN_CIPHER_SUITE_TKIP RSN_SELECTOR(0x00, 0x0f, 0xac, 2)
@@ -93,6 +100,9 @@
 #define WPA_OUI_TYPE RSN_SELECTOR(0x00, 0x50, 0xf2, 1)
 
 #define RSN_SELECTOR_PUT(a, val) WPA_PUT_BE32((u8 *) (a), (val))
+/* @a指向的位置是一个RSN选择符
+从@a中以大端序取出4个字节的整数
+*/
 #define RSN_SELECTOR_GET(a) WPA_GET_BE32((const u8 *) (a))
 
 #define RSN_NUM_REPLAY_COUNTERS_1 0
@@ -110,6 +120,7 @@
 #endif /* CONFIG_IEEE80211W */
 
 
+/* IEEE Std 802.11-2012, 8.4.2.27.4 RSN Capabilities */
 /* IEEE 802.11, 7.3.2.25.3 RSN Capabilities */
 #define WPA_CAPABILITY_PREAUTH BIT(0)
 #define WPA_CAPABILITY_NO_PAIRWISE BIT(1)
@@ -218,9 +229,13 @@ struct wpa_ptk {
  */
 
 struct wpa_ie_hdr {
+	/* WLAN_EID_VENDOR_SPECIFIC */
 	u8 elem_id;
+	/* 从oui开始后面的长度，不包含elem_id和len */
 	u8 len;
+	/* WPA_OUI_TYPE */
 	u8 oui[4]; /* 24-bit OUI followed by 8-bit OUI type */
+	/* WPA_VERSION */
 	u8 version[2]; /* little endian */
 } STRUCT_PACKED;
 
@@ -252,6 +267,7 @@ struct wpa_ie_hdr {
 /* IEEE Std 802.11-2012 8.4.2.27 */
 struct rsn_ie_hdr {
 	u8 elem_id; /* WLAN_EID_RSN */
+	/* 从version开始后面的长度，不包含elem_id和len */
 	u8 len;
 	u8 version[2]; /* little endian */
 } STRUCT_PACKED;

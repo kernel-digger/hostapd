@@ -340,6 +340,9 @@ int wpa_ft_parse_ies(const u8 *ies, size_t ies_len,
 
 
 #ifndef CONFIG_NO_WPA2
+/*
+把RSN选择符密码套件转换为bit位
+*/
 static int rsn_selector_to_bitfield(const u8 *s)
 {
 	if (RSN_SELECTOR_GET(s) == RSN_CIPHER_SUITE_NONE)
@@ -360,6 +363,11 @@ static int rsn_selector_to_bitfield(const u8 *s)
 }
 
 
+/*
+把RSN选择符密钥管理方式转换为bit位
+802.1X认证
+PSK预共享密钥
+*/
 static int rsn_key_mgmt_to_bitfield(const u8 *s)
 {
 	if (RSN_SELECTOR_GET(s) == RSN_AUTH_KEY_MGMT_UNSPEC_802_1X)
@@ -383,6 +391,9 @@ static int rsn_key_mgmt_to_bitfield(const u8 *s)
 #endif /* CONFIG_NO_WPA2 */
 
 
+/*
+解析RSN IE
+*/
 /**
  * wpa_parse_wpa_ie_rsn - Parse RSN IE
  * @rsn_ie: Buffer containing RSN IE
@@ -426,6 +437,7 @@ int wpa_parse_wpa_ie_rsn(const u8 *rsn_ie, size_t rsn_ie_len,
 
 	hdr = (const struct rsn_ie_hdr *) rsn_ie;
 
+	/* RSN Element ID */
 	if (hdr->elem_id != WLAN_EID_RSN ||
 	    hdr->len != rsn_ie_len - 2 ||
 	    WPA_GET_LE16(hdr->version) != RSN_VERSION) {
@@ -437,6 +449,7 @@ int wpa_parse_wpa_ie_rsn(const u8 *rsn_ie, size_t rsn_ie_len,
 	pos = (const u8 *) (hdr + 1);
 	left = rsn_ie_len - sizeof(*hdr);
 
+	/* 组播数据密码套件 */
 	if (left >= RSN_SELECTOR_LEN) {
 		data->group_cipher = rsn_selector_to_bitfield(pos);
 #ifdef CONFIG_IEEE80211W
@@ -454,8 +467,10 @@ int wpa_parse_wpa_ie_rsn(const u8 *rsn_ie, size_t rsn_ie_len,
 		return -3;
 	}
 
+	/* 成对密码套件 */
 	if (left >= 2) {
 		data->pairwise_cipher = 0;
+		/* 个数 */
 		count = WPA_GET_LE16(pos);
 		pos += 2;
 		left -= 2;
@@ -464,6 +479,7 @@ int wpa_parse_wpa_ie_rsn(const u8 *rsn_ie, size_t rsn_ie_len,
 				   "count %u left %u", __func__, count, left);
 			return -4;
 		}
+		/* 加密方式 */
 		for (i = 0; i < count; i++) {
 			data->pairwise_cipher |= rsn_selector_to_bitfield(pos);
 			pos += RSN_SELECTOR_LEN;
@@ -482,8 +498,10 @@ int wpa_parse_wpa_ie_rsn(const u8 *rsn_ie, size_t rsn_ie_len,
 		return -5;
 	}
 
+	/* 密钥管理方式 */
 	if (left >= 2) {
 		data->key_mgmt = 0;
+		/* 个数 */
 		count = WPA_GET_LE16(pos);
 		pos += 2;
 		left -= 2;
@@ -492,6 +510,7 @@ int wpa_parse_wpa_ie_rsn(const u8 *rsn_ie, size_t rsn_ie_len,
 				   "count %u left %u", __func__, count, left);
 			return -6;
 		}
+		/* 认证方式 */
 		for (i = 0; i < count; i++) {
 			data->key_mgmt |= rsn_key_mgmt_to_bitfield(pos);
 			pos += RSN_SELECTOR_LEN;
@@ -503,13 +522,16 @@ int wpa_parse_wpa_ie_rsn(const u8 *rsn_ie, size_t rsn_ie_len,
 		return -7;
 	}
 
+	/* RSN能力 */
 	if (left >= 2) {
 		data->capabilities = WPA_GET_LE16(pos);
 		pos += 2;
 		left -= 2;
 	}
 
+	/* PMKID */
 	if (left >= 2) {
+		/* 个数 */
 		data->num_pmkid = WPA_GET_LE16(pos);
 		pos += 2;
 		left -= 2;
@@ -528,6 +550,7 @@ int wpa_parse_wpa_ie_rsn(const u8 *rsn_ie, size_t rsn_ie_len,
 	}
 
 #ifdef CONFIG_IEEE80211W
+	/* Group Management Cipher Suite */
 	if (left >= 4) {
 		data->mgmt_group_cipher = rsn_selector_to_bitfield(pos);
 		if (data->mgmt_group_cipher != WPA_CIPHER_AES_128_CMAC) {
@@ -581,6 +604,9 @@ static int wpa_key_mgmt_to_bitfield(const u8 *s)
 }
 
 
+/*
+解析WPA1 IE
+*/
 int wpa_parse_wpa_ie_wpa(const u8 *wpa_ie, size_t wpa_ie_len,
 			 struct wpa_ie_data *data)
 {
@@ -612,6 +638,7 @@ int wpa_parse_wpa_ie_wpa(const u8 *wpa_ie, size_t wpa_ie_len,
 
 	hdr = (const struct wpa_ie_hdr *) wpa_ie;
 
+	/* Vendor Specific Element ID */
 	if (hdr->elem_id != WLAN_EID_VENDOR_SPECIFIC ||
 	    hdr->len != wpa_ie_len - 2 ||
 	    RSN_SELECTOR_GET(hdr->oui) != WPA_OUI_TYPE ||
@@ -624,6 +651,7 @@ int wpa_parse_wpa_ie_wpa(const u8 *wpa_ie, size_t wpa_ie_len,
 	pos = (const u8 *) (hdr + 1);
 	left = wpa_ie_len - sizeof(*hdr);
 
+	/* 组播数据密码套件 */
 	if (left >= WPA_SELECTOR_LEN) {
 		data->group_cipher = wpa_selector_to_bitfield(pos);
 		pos += WPA_SELECTOR_LEN;
@@ -634,8 +662,10 @@ int wpa_parse_wpa_ie_wpa(const u8 *wpa_ie, size_t wpa_ie_len,
 		return -3;
 	}
 
+	/* 成对密码套件 */
 	if (left >= 2) {
 		data->pairwise_cipher = 0;
+		/* 个数 */
 		count = WPA_GET_LE16(pos);
 		pos += 2;
 		left -= 2;
@@ -644,6 +674,7 @@ int wpa_parse_wpa_ie_wpa(const u8 *wpa_ie, size_t wpa_ie_len,
 				   "count %u left %u", __func__, count, left);
 			return -4;
 		}
+		/* 加密方式 */
 		for (i = 0; i < count; i++) {
 			data->pairwise_cipher |= wpa_selector_to_bitfield(pos);
 			pos += WPA_SELECTOR_LEN;
@@ -655,8 +686,10 @@ int wpa_parse_wpa_ie_wpa(const u8 *wpa_ie, size_t wpa_ie_len,
 		return -5;
 	}
 
+	/* 密钥管理方式 */
 	if (left >= 2) {
 		data->key_mgmt = 0;
+		/* 个数 */
 		count = WPA_GET_LE16(pos);
 		pos += 2;
 		left -= 2;
@@ -665,6 +698,7 @@ int wpa_parse_wpa_ie_wpa(const u8 *wpa_ie, size_t wpa_ie_len,
 				   "count %u left %u", __func__, count, left);
 			return -6;
 		}
+		/* 认证方式 */
 		for (i = 0; i < count; i++) {
 			data->key_mgmt |= wpa_key_mgmt_to_bitfield(pos);
 			pos += WPA_SELECTOR_LEN;
@@ -676,6 +710,7 @@ int wpa_parse_wpa_ie_wpa(const u8 *wpa_ie, size_t wpa_ie_len,
 		return -7;
 	}
 
+	/* capabilities */
 	if (left >= 2) {
 		data->capabilities = WPA_GET_LE16(pos);
 		pos += 2;

@@ -197,6 +197,7 @@
 #define WLAN_REASON_DISASSOC_LOW_ACK 34
 
 
+/* IEEE Std 802.11-2012 8.4.2.1 */
 /* Information Element IDs */
 #define WLAN_EID_SSID 0
 #define WLAN_EID_SUPP_RATES 1
