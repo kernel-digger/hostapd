@@ -227,6 +227,7 @@ skip_wpa_check:
 	new_assoc = (sta->flags & WLAN_STA_ASSOC) == 0;
 	/* 标记STA为认证和关联 */
 	sta->flags |= WLAN_STA_AUTH | WLAN_STA_ASSOC;
+	/* 移除PTK */
 	wpa_auth_sm_event(sta->wpa_sm, WPA_ASSOC);
 
 	hostapd_new_assoc_sta(hapd, sta, !new_assoc);

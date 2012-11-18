@@ -42,18 +42,24 @@ int l2_packet_get_own_addr(struct l2_packet_data *l2, u8 *addr)
 }
 
 
+/*
+发送数据
+*/
 int l2_packet_send(struct l2_packet_data *l2, const u8 *dst_addr, u16 proto,
 		   const u8 *buf, size_t len)
 {
 	int ret;
 	if (l2 == NULL)
 		return -1;
+	/* @buf中已经包含2层头 */
 	if (l2->l2_hdr) {
+		/* 发送数据 */
 		ret = send(l2->fd, buf, len, 0);
 		if (ret < 0)
 			wpa_printf(MSG_ERROR, "l2_packet_send - send: %s",
 				   strerror(errno));
 	} else {
+	/* 构造链路层socket地址 */
 		struct sockaddr_ll ll;
 		os_memset(&ll, 0, sizeof(ll));
 		ll.sll_family = AF_PACKET;
@@ -61,6 +67,7 @@ int l2_packet_send(struct l2_packet_data *l2, const u8 *dst_addr, u16 proto,
 		ll.sll_protocol = htons(proto);
 		ll.sll_halen = ETH_ALEN;
 		os_memcpy(ll.sll_addr, dst_addr, ETH_ALEN);
+		/* 发送数据到@ll */
 		ret = sendto(l2->fd, buf, len, 0, (struct sockaddr *) &ll,
 			     sizeof(ll));
 		if (ret < 0) {

@@ -46,6 +46,7 @@ typedef enum { FALSE = 0, TRUE = 1 } Boolean;
 #define WPA_KEY_MGMT_PSK_SHA256 BIT(8)
 #define WPA_KEY_MGMT_WPS BIT(9)
 
+/* 使用8021x认证 */
 static inline int wpa_key_mgmt_wpa_ieee8021x(int akm)
 {
 	return !!(akm & (WPA_KEY_MGMT_IEEE8021X |
@@ -53,6 +54,7 @@ static inline int wpa_key_mgmt_wpa_ieee8021x(int akm)
 			 WPA_KEY_MGMT_IEEE8021X_SHA256));
 }
 
+/* 预共享密钥方式 */
 static inline int wpa_key_mgmt_wpa_psk(int akm)
 {
 	return !!(akm & (WPA_KEY_MGMT_PSK |

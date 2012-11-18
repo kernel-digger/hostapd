@@ -33,6 +33,10 @@ struct wpa_state_machine {
 
 	u8 addr[ETH_ALEN];
 
+	/* 该字段的状态赋值由宏SM_ENTRY_MA控制
+	   比如SM_ENTRY_MA(WPA_PTK, INITIALIZE, wpa_ptk);
+	   即sm->wpa_ptk_state = WPA_PTK_INITIALIZE;
+	*/
 	enum {
 		WPA_PTK_INITIALIZE, WPA_PTK_DISCONNECT, WPA_PTK_DISCONNECTED,
 		WPA_PTK_AUTHENTICATION, WPA_PTK_AUTHENTICATION2,
@@ -81,6 +85,10 @@ struct wpa_state_machine {
 	u8 *last_rx_eapol_key; /* starting from IEEE 802.1X header */
 	size_t last_rx_eapol_key_len;
 
+	/* 标记状态机的状态发生了改变
+	   使用宏SM_ENTRY SM_ENTRY_M SM_ENTRY_MA切换状态时
+	   如果状态变了会将sm->changed = TRUE;
+	*/
 	unsigned int changed:1;
 	unsigned int in_step_loop:1;
 	unsigned int pending_deinit:1;

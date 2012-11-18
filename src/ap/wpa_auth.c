@@ -67,10 +67,14 @@ static inline void wpa_auth_mic_failure_report(
 }
 
 
+/*
+设置8021x认证相关状态参数
+*/
 static inline void wpa_auth_set_eapol(struct wpa_authenticator *wpa_auth,
 				      const u8 *addr, wpa_eapol_variable var,
 				      int value)
 {
+	/* hostapd_wpa_auth_set_eapol */
 	if (wpa_auth->cb.set_eapol)
 		wpa_auth->cb.set_eapol(wpa_auth->cb.ctx, addr, var, value);
 }
@@ -90,6 +94,7 @@ static inline const u8 * wpa_auth_get_psk(struct wpa_authenticator *wpa_auth,
 {
 	if (wpa_auth->cb.get_psk == NULL)
 		return NULL;
+	/* hostapd_wpa_auth_get_psk */
 	return wpa_auth->cb.get_psk(wpa_auth->cb.ctx, addr, prev_psk);
 }
 
@@ -110,6 +115,7 @@ static inline int wpa_auth_set_key(struct wpa_authenticator *wpa_auth,
 {
 	if (wpa_auth->cb.set_key == NULL)
 		return -1;
+	/* hostapd_wpa_auth_set_key */
 	return wpa_auth->cb.set_key(wpa_auth->cb.ctx, vlan_id, alg, addr, idx,
 				    key, key_len);
 }
@@ -130,6 +136,7 @@ wpa_auth_send_eapol(struct wpa_authenticator *wpa_auth, const u8 *addr,
 {
 	if (wpa_auth->cb.send_eapol == NULL)
 		return -1;
+	/* hostapd_wpa_auth_send_eapol */
 	return wpa_auth->cb.send_eapol(wpa_auth->cb.ctx, addr, data, data_len,
 				       encrypt);
 }
@@ -311,6 +318,7 @@ static int wpa_group_init_gmk_and_counter(struct wpa_authenticator *wpa_auth,
 		return -1;
 	wpa_hexdump_key(MSG_DEBUG, "GMK", group->GMK, WPA_GMK_LEN);
 
+	/* IEEE Std 802.11-2012 11.6.5 Nonce generation */
 	/*
 	 * Counter = PRF-256(Random number, "Init Counter",
 	 *                   Local MAC Address || Time)
@@ -566,6 +574,7 @@ int wpa_auth_sta_associated(struct wpa_authenticator *wpa_auth,
 	}
 #endif /* CONFIG_IEEE80211R */
 
+	/* 防止重入 */
 	if (sm->started) {
 		os_memset(&sm->key_replay, 0, sizeof(sm->key_replay));
 		sm->ReAuthenticationRequest = TRUE;
@@ -574,12 +583,15 @@ int wpa_auth_sta_associated(struct wpa_authenticator *wpa_auth,
 
 	wpa_auth_logger(wpa_auth, sm->addr, LOGGER_DEBUG,
 			"start authentication");
+	/* 启动状态机 */
 	sm->started = 1;
 
+	/* 状态机初始化 */
 	sm->Init = TRUE;
 	if (wpa_sm_step(sm) == 1)
 		return 1; /* should not really happen */
 	sm->Init = FALSE;
+	/* 进入认证请求状态 */
 	sm->AuthenticationRequest = TRUE;
 	return wpa_sm_step(sm);
 }
@@ -1106,6 +1118,7 @@ void wpa_receive(struct wpa_authenticator *wpa_auth,
 	}
 #endif /* CONFIG_PEERKEY */
 
+	/* 记录刚收到的EAPOL-KEY报文 */
 	os_free(sm->last_rx_eapol_key);
 	sm->last_rx_eapol_key = os_malloc(data_len);
 	if (sm->last_rx_eapol_key == NULL)
@@ -1168,6 +1181,10 @@ static void wpa_send_eapol_timeout(void *eloop_ctx, void *timeout_ctx)
 }
 
 
+/*
+构造EAPOL-KEY报文
+发送报文
+*/
 void __wpa_send_eapol(struct wpa_authenticator *wpa_auth,
 		      struct wpa_state_machine *sm, int key_info,
 		      const u8 *key_rsc, const u8 *nonce,
@@ -1326,6 +1343,7 @@ void __wpa_send_eapol(struct wpa_authenticator *wpa_auth,
 
 	wpa_auth_set_eapol(sm->wpa_auth, sm->addr, WPA_EAPOL_inc_EapolFramesTx,
 			   1);
+	/* 发送EAPOL-KEY报文 */
 	wpa_auth_send_eapol(wpa_auth, sm->addr, (u8 *) hdr, len,
 			    sm->pairwise_set);
 	os_free(hdr);
@@ -1348,15 +1366,18 @@ static void wpa_send_eapol(struct wpa_authenticator *wpa_auth,
 	__wpa_send_eapol(wpa_auth, sm, key_info, key_rsc, nonce, kde, kde_len,
 			 keyidx, encr, 0);
 
+	/* 重传间隔 */
 	ctr = pairwise ? sm->TimeoutCtr : sm->GTimeoutCtr;
 	if (ctr == 1 && wpa_auth->conf.tx_status)
 		timeout_ms = eapol_key_timeout_first;
 	else
 		timeout_ms = eapol_key_timeout_subseq;
 	if (pairwise && ctr == 1 && !(key_info & WPA_KEY_INFO_MIC))
+		/* 4路握手中的第一个报文 */
 		sm->pending_1_of_4_timeout = 1;
 	wpa_printf(MSG_DEBUG, "WPA: Use EAPOL-Key timeout of %u ms (retry "
 		   "counter %d)", timeout_ms, ctr);
+	/* 重传定时器 */
 	eloop_register_timeout(timeout_ms / 1000, (timeout_ms % 1000) * 1000,
 			       wpa_send_eapol_timeout, wpa_auth, sm);
 }
@@ -1387,9 +1408,14 @@ static int wpa_verify_key_mic(struct wpa_ptk *PTK, u8 *data, size_t data_len)
 }
 
 
+/*
+删除@sm中的PTK
+*/
 void wpa_remove_ptk(struct wpa_state_machine *sm)
 {
+	/* 标记PTK无效 */
 	sm->PTK_valid = FALSE;
+	/* 清0 */
 	os_memset(&sm->PTK, 0, sizeof(sm->PTK));
 	wpa_auth_set_key(sm->wpa_auth, 0, WPA_ALG_NONE, sm->addr, 0, NULL, 0);
 	sm->pairwise_set = FALSE;
@@ -1501,6 +1527,7 @@ static enum wpa_alg wpa_alg_enum(int alg)
 
 SM_STATE(WPA_PTK, INITIALIZE)
 {
+	/* 标记状态为sm->wpa_ptk_state = WPA_PTK_INITIALIZE */
 	SM_ENTRY_MA(WPA_PTK, INITIALIZE, wpa_ptk);
 	if (sm->Init) {
 		/* Init flag is not cleared here, so avoid busy
@@ -1512,6 +1539,7 @@ SM_STATE(WPA_PTK, INITIALIZE)
 	if (sm->GUpdateStationKeys)
 		sm->group->GKeyDoneStations--;
 	sm->GUpdateStationKeys = FALSE;
+	/* WPA1 */
 	if (sm->wpa == WPA_VERSION_WPA)
 		sm->PInitAKeys = FALSE;
 	if (1 /* Unicast cipher supported AND (ESS OR ((IBSS or WDS) and
@@ -1556,6 +1584,9 @@ SM_STATE(WPA_PTK, AUTHENTICATION)
 }
 
 
+/*
+该bss下的第一个STA
+*/
 static void wpa_group_first_station(struct wpa_authenticator *wpa_auth,
 				    struct wpa_group *group)
 {
@@ -1583,11 +1614,13 @@ SM_STATE(WPA_PTK, AUTHENTICATION2)
 {
 	SM_ENTRY_MA(WPA_PTK, AUTHENTICATION2, wpa_ptk);
 
+	/* 第一个STA */
 	if (!sm->group->first_sta_seen) {
 		wpa_group_first_station(sm->wpa_auth, sm->group);
 		sm->group->first_sta_seen = TRUE;
 	}
 
+	/* 认证者随机数 */
 	os_memcpy(sm->ANonce, sm->group->Counter, WPA_NONCE_LEN);
 	wpa_hexdump(MSG_DEBUG, "WPA: Assign ANonce", sm->ANonce,
 		    WPA_NONCE_LEN);
@@ -1640,11 +1673,14 @@ SM_STATE(WPA_PTK, INITPMK)
 }
 
 
+/* 设置PMK */
 SM_STATE(WPA_PTK, INITPSK)
 {
 	const u8 *psk;
 	SM_ENTRY_MA(WPA_PTK, INITPSK, wpa_ptk);
+	/* 取PSK */
 	psk = wpa_auth_get_psk(sm->wpa_auth, sm->addr, NULL);
+	/* 预共享密钥方式下，PMK等于PSK */
 	if (psk) {
 		os_memcpy(sm->PMK, psk, PMK_LEN);
 #ifdef CONFIG_IEEE80211R
@@ -1656,6 +1692,9 @@ SM_STATE(WPA_PTK, INITPSK)
 }
 
 
+/*
+4路握手第一步
+*/
 SM_STATE(WPA_PTK, PTKSTART)
 {
 	u8 buf[2 + RSN_SELECTOR_LEN + PMKID_LEN], *pmkid = NULL;
@@ -1698,6 +1737,7 @@ SM_STATE(WPA_PTK, PTKSTART)
 				  wpa_key_mgmt_sha256(sm->wpa_key_mgmt));
 		}
 	}
+	/* 发送EAPOL-KEY报文 */
 	wpa_send_eapol(sm->wpa_auth, sm,
 		       WPA_KEY_INFO_ACK | WPA_KEY_INFO_KEY_TYPE, NULL,
 		       sm->ANonce, pmkid, pmkid_len, 0, 0);
@@ -1721,7 +1761,9 @@ static int wpa_derive_ptk(struct wpa_state_machine *sm, const u8 *pmk,
 	return 0;
 }
 
-
+/*
+PTK计算协商
+*/
 SM_STATE(WPA_PTK, PTKCALCNEGOTIATING)
 {
 	struct wpa_ptk PTK;
@@ -1729,6 +1771,7 @@ SM_STATE(WPA_PTK, PTKCALCNEGOTIATING)
 	const u8 *pmk = NULL;
 
 	SM_ENTRY_MA(WPA_PTK, PTKCALCNEGOTIATING, wpa_ptk);
+	/* wpa_receive最后置为TRUE，这里清标记 */
 	sm->EAPOLKeyReceived = FALSE;
 
 	/* WPA with IEEE 802.1X: use the derived PMK from EAP
@@ -1793,6 +1836,7 @@ SM_STATE(WPA_PTK, PTKCALCNEGOTIATING)
 
 	sm->MICVerified = TRUE;
 
+	/* 复制计算出的PTK */
 	os_memcpy(&sm->PTK, &PTK, sizeof(PTK));
 	sm->PTK_valid = TRUE;
 }
@@ -2060,10 +2104,14 @@ SM_STATE(WPA_PTK, PTKINITDONE)
 }
 
 
+/*
+WPA_PTK分支函数
+*/
 SM_STEP(WPA_PTK)
 {
 	struct wpa_authenticator *wpa_auth = sm->wpa_auth;
 
+	/* 由wpa_auth_sta_associated中切换过来 */
 	if (sm->Init)
 		SM_ENTER(WPA_PTK, INITIALIZE);
 	else if (sm->Disconnect
@@ -2074,6 +2122,7 @@ SM_STEP(WPA_PTK)
 	}
 	else if (sm->DeauthenticationRequest)
 		SM_ENTER(WPA_PTK, DISCONNECTED);
+	/* 由wpa_auth_sta_associated中切换过来 */
 	else if (sm->AuthenticationRequest)
 		SM_ENTER(WPA_PTK, AUTHENTICATION);
 	else if (sm->ReAuthenticationRequest)
@@ -2089,14 +2138,18 @@ SM_STEP(WPA_PTK)
 	case WPA_PTK_DISCONNECTED:
 		SM_ENTER(WPA_PTK, INITIALIZE);
 		break;
+	/* 由SM_STATE(WPA_PTK, AUTHENTICATION)中切换过来 */
 	case WPA_PTK_AUTHENTICATION:
 		SM_ENTER(WPA_PTK, AUTHENTICATION2);
 		break;
+	/* 由SM_STATE(WPA_PTK, AUTHENTICATION2)中切换过来 */
 	case WPA_PTK_AUTHENTICATION2:
+		/* 8021x认证 */
 		if (wpa_key_mgmt_wpa_ieee8021x(sm->wpa_key_mgmt) &&
 		    wpa_auth_get_eapol(sm->wpa_auth, sm->addr,
 				       WPA_EAPOL_keyRun) > 0)
 			SM_ENTER(WPA_PTK, INITPMK);
+		/* 预共享密钥 */
 		else if (wpa_key_mgmt_wpa_psk(sm->wpa_key_mgmt)
 			 /* FIX: && 802.1X::keyRun */)
 			SM_ENTER(WPA_PTK, INITPSK);
@@ -2112,8 +2165,11 @@ SM_STEP(WPA_PTK)
 			SM_ENTER(WPA_PTK, DISCONNECT);
 		}
 		break;
+	/* 由SM_STATE(WPA_PTK, INITPSK)中切换过来 */
 	case WPA_PTK_INITPSK:
+		/* PSK已设置 */
 		if (wpa_auth_get_psk(sm->wpa_auth, sm->addr, NULL))
+			/* 开始4路握手第一步 */
 			SM_ENTER(WPA_PTK, PTKSTART);
 		else {
 			wpa_auth_logger(sm->wpa_auth, sm->addr, LOGGER_INFO,
@@ -2122,10 +2178,13 @@ SM_STEP(WPA_PTK)
 			SM_ENTER(WPA_PTK, DISCONNECT);
 		}
 		break;
+	/* 由SM_STATE(WPA_PTK, PTKSTART)中切换过来 */
 	case WPA_PTK_PTKSTART:
+		/* wpa_receive中收到STA的EAPOL-KEY报文 */
 		if (sm->EAPOLKeyReceived && !sm->EAPOLKeyRequest &&
 		    sm->EAPOLKeyPairwise)
 			SM_ENTER(WPA_PTK, PTKCALCNEGOTIATING);
+		/* 达到重传次数 */
 		else if (sm->TimeoutCtr >
 			 (int) dot11RSNAConfigPairwiseUpdateCount) {
 			wpa_auth->dot11RSNA4WayHandshakeFailures++;
@@ -2133,9 +2192,12 @@ SM_STEP(WPA_PTK)
 					 "PTKSTART: Retry limit %d reached",
 					 dot11RSNAConfigPairwiseUpdateCount);
 			SM_ENTER(WPA_PTK, DISCONNECT);
+		/* 重传定时器wpa_send_eapol_timeout中过来 */
 		} else if (sm->TimeoutEvt)
 			SM_ENTER(WPA_PTK, PTKSTART);
+		/* 发送完第一个握手包，结束STA关联帧处理的调用路径 */
 		break;
+	/* 由SM_STATE(WPA_PTK, PTKCALCNEGOTIATING)中切换过来 */
 	case WPA_PTK_PTKCALCNEGOTIATING:
 		if (sm->MICVerified)
 			SM_ENTER(WPA_PTK, PTKCALCNEGOTIATING2);
@@ -2466,6 +2528,9 @@ static void wpa_group_sm_step(struct wpa_authenticator *wpa_auth,
 }
 
 
+/*
+调用状态机分支函数
+*/
 static int wpa_sm_step(struct wpa_state_machine *sm)
 {
 	if (sm == NULL)
@@ -2494,6 +2559,7 @@ static int wpa_sm_step(struct wpa_state_machine *sm)
 		if (sm->pending_deinit)
 			break;
 		wpa_group_sm_step(sm->wpa_auth, sm->group);
+	/* 状态发生变化，继续调用状态机分支函数 */
 	} while (sm->changed || sm->wpa_auth->group->changed);
 	sm->in_step_loop = 0;
 

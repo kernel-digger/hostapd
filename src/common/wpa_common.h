@@ -133,23 +133,37 @@
 #define WPA_PMK_NAME_LEN 16
 
 
+/* IEEE Std 802.11-2012, 11.6.2 */
 /* IEEE 802.11, 8.5.2 EAPOL-Key frames */
 #define WPA_KEY_INFO_TYPE_MASK ((u16) (BIT(0) | BIT(1) | BIT(2)))
 #define WPA_KEY_INFO_TYPE_HMAC_MD5_RC4 BIT(0)
 #define WPA_KEY_INFO_TYPE_HMAC_SHA1_AES BIT(1)
 #define WPA_KEY_INFO_TYPE_AES_128_CMAC 3
+/* 1 - 表示是用于生成PTK的4路握手报文 */
 #define WPA_KEY_INFO_KEY_TYPE BIT(3) /* 1 = Pairwise, 0 = Group key */
 /* bit4..5 is used in WPA, but is reserved in IEEE 802.11i/RSN */
 #define WPA_KEY_INFO_KEY_INDEX_MASK (BIT(4) | BIT(5))
 #define WPA_KEY_INFO_KEY_INDEX_SHIFT 4
+/* 是否安装PTK */
 #define WPA_KEY_INFO_INSTALL BIT(6) /* pairwise */
 #define WPA_KEY_INFO_TXRX BIT(6) /* group */
+/* 认证者要求请求者在回应报文中是否需要携带EAPOL-Key帧 */
 #define WPA_KEY_INFO_ACK BIT(7)
+/* 指示该EAPOL-Key帧中是否含有MIC */
 #define WPA_KEY_INFO_MIC BIT(8)
+/* 认证者在请求者获得PTK和GTK前置0
+
+请求者在其获得PTK和GTK前置0
+*/
 #define WPA_KEY_INFO_SECURE BIT(9)
 #define WPA_KEY_INFO_ERROR BIT(10)
+/* 请求者要求认证者初始化4路握手或组密钥握手置1
+认证者从不该置此位为1
+*/
 #define WPA_KEY_INFO_REQUEST BIT(11)
+/* 指示Key Date域的数据是否加密过 */
 #define WPA_KEY_INFO_ENCR_KEY_DATA BIT(12) /* IEEE 802.11i/RSN only */
+/* 指示是否为SMK握手消息 */
 #define WPA_KEY_INFO_SMK_MESSAGE BIT(13)
 
 
@@ -157,12 +171,15 @@ struct wpa_eapol_key {
 	u8 type;
 	/* Note: key_info, key_length, and key_data_length are unaligned */
 	u8 key_info[2]; /* big endian */
+	/* 指示PTK长度 */
 	u8 key_length[2]; /* big endian */
 	u8 replay_counter[WPA_REPLAY_COUNTER_LEN];
 	u8 key_nonce[WPA_NONCE_LEN];
 	u8 key_iv[16];
+	/* receive sequence counter */
 	u8 key_rsc[WPA_KEY_RSC_LEN];
 	u8 key_id[8]; /* Reserved in IEEE 802.11i/RSN */
+	/* EAPOL-Key帧的MIC */
 	u8 key_mic[16];
 	u8 key_data_length[2]; /* big endian */
 	/* followed by key_data_length bytes of key_data */

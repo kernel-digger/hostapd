@@ -1164,6 +1164,9 @@ atheros_wireless_event_init(struct atheros_driver_data *drv)
 }
 
 
+/*
+发送EAPOL报文
+*/
 static int
 atheros_send_eapol(void *priv, const u8 *addr, const u8 *data, size_t data_len,
 		   int encrypt, const u8 *own_addr, u32 flags)
@@ -1191,9 +1194,13 @@ atheros_send_eapol(void *priv, const u8 *addr, const u8 *data, size_t data_len,
 		}
 	}
 	eth = (struct l2_ethhdr *) bp;
+	/* 目的MAC */
 	memcpy(eth->h_dest, addr, ETH_ALEN);
+	/* 源MAC */
 	memcpy(eth->h_source, own_addr, ETH_ALEN);
+	/* 0x888e */
 	eth->h_proto = host_to_be16(ETH_P_EAPOL);
+	/* EAPOL报文 */
 	memcpy(eth+1, data, data_len);
 
 	wpa_hexdump(MSG_MSGDUMP, "TX EAPOL", bp, len);

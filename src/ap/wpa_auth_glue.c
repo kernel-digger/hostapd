@@ -121,6 +121,9 @@ static void hostapd_wpa_auth_mic_failure_report(void *ctx, const u8 *addr)
 }
 
 
+/*
+设置8021x认证相关参数
+*/
 static void hostapd_wpa_auth_set_eapol(void *ctx, const u8 *addr,
 				       wpa_eapol_variable var, int value)
 {
@@ -227,6 +230,7 @@ static int hostapd_wpa_auth_set_key(void *ctx, int vlan_id, enum wpa_alg alg,
 			return -1;
 	}
 
+	/* atheros_set_key */
 	return hostapd_drv_set_key(ifname, hapd, alg, addr, idx, 1, NULL, 0,
 				   key, key_len);
 }

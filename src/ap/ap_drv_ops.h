@@ -148,6 +148,7 @@ static inline int hostapd_drv_hapd_send_eapol(struct hostapd_data *hapd,
 {
 	if (hapd->driver == NULL || hapd->driver->hapd_send_eapol == NULL)
 		return 0;
+	/* atheros_send_eapol */
 	return hapd->driver->hapd_send_eapol(hapd->drv_priv, addr, data,
 					     data_len, encrypt,
 					     hapd->own_addr, flags);

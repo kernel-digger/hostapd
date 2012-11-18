@@ -470,6 +470,7 @@ int hostapd_sta_set_flags(struct hostapd_data *hapd, u8 *addr,
 {
 	if (hapd->driver == NULL || hapd->driver->sta_set_flags == NULL)
 		return 0;
+	/* atheros_sta_set_flags */
 	return hapd->driver->sta_set_flags(hapd->drv_priv, addr, total_flags,
 					   flags_or, flags_and);
 }
