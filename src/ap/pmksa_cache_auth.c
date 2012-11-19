@@ -12,6 +12,13 @@
  * See README and COPYING for more details.
  */
 
+/*
+pairwise master key security association (PMKSA) :
+The context resulting from a successful IEEE 802.1X authentication exchange
+between the peer and Authenticati on Server (AS) or from a preshared key (PSK).
+
+*/
+
 #include "utils/includes.h"
 
 #include "utils/common.h"
