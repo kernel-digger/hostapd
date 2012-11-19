@@ -146,6 +146,7 @@ struct wpa_group {
 	int GTK_len;
 	int GN, GM;
 	Boolean GTKAuthenticator;
+	/* 在wpa_group_init_gmk_and_counter中初始化 */
 	u8 Counter[WPA_NONCE_LEN];
 
 	enum {
@@ -153,6 +154,7 @@ struct wpa_group {
 		WPA_GROUP_SETKEYS, WPA_GROUP_SETKEYSDONE
 	} wpa_group_state;
 
+	/* 在wpa_group_init_gmk_and_counter中初始化 */
 	u8 GMK[WPA_GMK_LEN];
 	u8 GTK[2][WPA_GTK_MAX_LEN];
 	u8 GNonce[WPA_NONCE_LEN];

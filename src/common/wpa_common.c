@@ -68,6 +68,13 @@ int wpa_eapol_key_mic(const u8 *key, int ver, const u8 *buf, size_t len,
 }
 
 
+/*
+µ¼³öPTK
+
+IEEE Std 802.11-2012, 11.6.1.3 Pairwise key hierarchy
+IEEE Std 802.11-2012, 11.6.1.6 PeerKey key hierarchy
+
+*/
 /**
  * wpa_pmk_to_ptk - Calculate PTK from PMK, addresses, and nonces
  * @pmk: Pairwise master key

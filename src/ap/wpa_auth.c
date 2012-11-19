@@ -308,6 +308,9 @@ static void wpa_group_set_key_len(struct wpa_group *group, int cipher)
 }
 
 
+/*
+初始化GMK和Counter
+*/
 static int wpa_group_init_gmk_and_counter(struct wpa_authenticator *wpa_auth,
 					  struct wpa_group *group)
 {
@@ -1142,6 +1145,9 @@ static int wpa_gmk_to_gtk(const u8 *gmk, const char *label, const u8 *addr,
 	u8 *pos;
 	int ret = 0;
 
+	/* IEEE Std 802.11-2012, 11.6.1.4 Group key hierarchy
+	   略有不同
+	*/
 	/* GTK = PRF-X(GMK, "Group key expansion",
 	 *	AA || GNonce || Time || random data)
 	 * The example described in the IEEE 802.11 standard uses only AA and
@@ -1383,6 +1389,13 @@ static void wpa_send_eapol(struct wpa_authenticator *wpa_auth,
 }
 
 
+/*
+@PTK	: 导出的PTK
+@data	: EAPOL-Key报文
+@data_len: 报文长度
+
+@return	: 0 - MIC正确; -1 - MIC错误
+*/
 static int wpa_verify_key_mic(struct wpa_ptk *PTK, u8 *data, size_t data_len)
 {
 	struct ieee802_1x_hdr *hdr;
@@ -1397,12 +1410,16 @@ static int wpa_verify_key_mic(struct wpa_ptk *PTK, u8 *data, size_t data_len)
 	hdr = (struct ieee802_1x_hdr *) data;
 	key = (struct wpa_eapol_key *) (hdr + 1);
 	key_info = WPA_GET_BE16(key->key_info);
+	/* 记录报文中的MIC */
 	os_memcpy(mic, key->key_mic, 16);
+	/* 置为0 */
 	os_memset(key->key_mic, 0, 16);
+	/* 使用kck计算EAPOL-Key的MIC，并与报文中原来的值比较 */
 	if (wpa_eapol_key_mic(PTK->kck, key_info & WPA_KEY_INFO_TYPE_MASK,
 			      data, data_len, key->key_mic) ||
 	    os_memcmp(mic, key->key_mic, 16) != 0)
 		ret = -1;
+	/* 复制回原报文中的值 */
 	os_memcpy(key->key_mic, mic, 16);
 	return ret;
 }
@@ -1744,6 +1761,9 @@ SM_STATE(WPA_PTK, PTKSTART)
 }
 
 
+/*
+导出PTK
+*/
 static int wpa_derive_ptk(struct wpa_state_machine *sm, const u8 *pmk,
 			  struct wpa_ptk *ptk)
 {
@@ -1778,6 +1798,7 @@ SM_STATE(WPA_PTK, PTKCALCNEGOTIATING)
 	 * WPA-PSK: iterate through possible PSKs and select the one matching
 	 * the packet */
 	for (;;) {
+		/* 选择PMK */
 		if (wpa_key_mgmt_wpa_psk(sm->wpa_key_mgmt)) {
 			pmk = wpa_auth_get_psk(sm->wpa_auth, sm->addr, pmk);
 			if (pmk == NULL)
@@ -1785,8 +1806,10 @@ SM_STATE(WPA_PTK, PTKCALCNEGOTIATING)
 		} else
 			pmk = sm->PMK;
 
+		/* 导出PTK */
 		wpa_derive_ptk(sm, pmk, &PTK);
 
+		/* 校验MIC */
 		if (wpa_verify_key_mic(&PTK, sm->last_rx_eapol_key,
 				       sm->last_rx_eapol_key_len) == 0) {
 			ok = 1;
@@ -1797,6 +1820,7 @@ SM_STATE(WPA_PTK, PTKCALCNEGOTIATING)
 			break;
 	}
 
+	/* MIC错误 */
 	if (!ok) {
 		wpa_auth_logger(sm->wpa_auth, sm->addr, LOGGER_DEBUG,
 				"invalid MIC in msg 2/4 of 4-Way Handshake");
@@ -1824,9 +1848,11 @@ SM_STATE(WPA_PTK, PTKCALCNEGOTIATING)
 	}
 #endif /* CONFIG_IEEE80211R */
 
+	/* 取消第一个报文的重传定时器 */
 	sm->pending_1_of_4_timeout = 0;
 	eloop_cancel_timeout(wpa_send_eapol_timeout, sm->wpa_auth, sm);
 
+	/* 更新PMK */
 	if (wpa_key_mgmt_wpa_psk(sm->wpa_key_mgmt)) {
 		/* PSK may have changed from the previous choice, so update
 		 * state machine data based on whatever PSK was selected here.
@@ -2199,6 +2225,7 @@ SM_STEP(WPA_PTK)
 		break;
 	/* 由SM_STATE(WPA_PTK, PTKCALCNEGOTIATING)中切换过来 */
 	case WPA_PTK_PTKCALCNEGOTIATING:
+		/* 收到的第2个握手报文MIC正确 */
 		if (sm->MICVerified)
 			SM_ENTER(WPA_PTK, PTKCALCNEGOTIATING2);
 		else if (sm->EAPOLKeyReceived && !sm->EAPOLKeyRequest &&
@@ -2207,6 +2234,7 @@ SM_STEP(WPA_PTK)
 		else if (sm->TimeoutEvt)
 			SM_ENTER(WPA_PTK, PTKSTART);
 		break;
+	/* 由SM_STATE(WPA_PTK, PTKCALCNEGOTIATING2)中切换过来 */
 	case WPA_PTK_PTKCALCNEGOTIATING2:
 		SM_ENTER(WPA_PTK, PTKINITNEGOTIATING);
 		break;
