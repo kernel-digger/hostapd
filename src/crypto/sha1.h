@@ -15,6 +15,9 @@
 #ifndef SHA1_H
 #define SHA1_H
 
+/* SHA1消息认证码长度
+20字节，160bits
+*/
 #define SHA1_MAC_LEN 20
 
 int hmac_sha1_vector(const u8 *key, size_t key_len, size_t num_elem,

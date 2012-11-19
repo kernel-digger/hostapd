@@ -12,6 +12,12 @@
  * See README and COPYING for more details.
  */
 
+/* 安全散列算法
+1993年美国国家标准局(NIST)公布SHA 即FIPS 180 Secure Hash Standard (SHS)
+1994年美国国家标准局(NIST)对SHA的改进版
+SHA1 即FIPS 180-1 Secure Hash Standard (SHS)
+*/
+
 #include "includes.h"
 
 #include "common.h"
@@ -110,6 +116,9 @@ int hmac_sha1(const u8 *key, size_t key_len, const u8 *data, size_t data_len,
 }
 
 
+/*
+基于SHA1的伪随机函数
+*/
 /**
  * sha1_prf - SHA1-based Pseudo-Random Function (PRF) (IEEE 802.11i, 8.5.1.1)
  * @key: Key for PRF
