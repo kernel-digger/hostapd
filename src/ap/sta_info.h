@@ -43,8 +43,11 @@
 
 
 struct sta_info {
+	/* 链入单链表 */
 	struct sta_info *next; /* next entry in sta list */
+	/* 链入哈希表 */
 	struct sta_info *hnext; /* next entry in hash table list */
+	/* STA MAC */
 	u8 addr[6];
 	u16 aid; /* STA's unique AID (1 .. 2007) or 0 if not yet assigned */
 	u32 flags; /* Bitfield of WLAN_STA_* */

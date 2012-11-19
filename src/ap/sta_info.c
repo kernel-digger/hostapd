@@ -255,6 +255,9 @@ void hostapd_free_stas(struct hostapd_data *hapd)
 }
 
 
+/*
+每个STA的定时器函数
+*/
 /**
  * ap_handle_timer - Per STA timer handler
  * @eloop_ctx: struct hostapd_data *
@@ -459,10 +462,13 @@ struct sta_info * ap_sta_add(struct hostapd_data *hapd, const u8 *addr)
 	/* initialize STA info data */
 	eloop_register_timeout(hapd->conf->ap_max_inactivity, 0,
 			       ap_handle_timer, hapd, sta);
+	/* 复制MAC */
 	os_memcpy(sta->addr, addr, ETH_ALEN);
+	/* 加入单链表 */
 	sta->next = hapd->sta_list;
 	hapd->sta_list = sta;
 	hapd->num_sta++;
+	/* 加入哈希表 */
 	ap_sta_hash_add(hapd, sta);
 	sta->ssid = &hapd->conf->ssid;
 	ap_sta_remove_in_other_bss(hapd, sta);
@@ -776,6 +782,9 @@ void ap_sta_stop_sa_query(struct hostapd_data *hapd, struct sta_info *sta)
 #endif /* CONFIG_IEEE80211W */
 
 
+/*
+设置或去掉@sta认证状态标记
+*/
 void ap_sta_set_authorized(struct hostapd_data *hapd, struct sta_info *sta,
 			   int authorized)
 {
@@ -806,6 +815,7 @@ void ap_sta_set_authorized(struct hostapd_data *hapd, struct sta_info *sta,
 			wpa_msg(hapd->msg_ctx_parent, MSG_INFO,
 				AP_STA_CONNECTED MACSTR, MAC2STR(sta->addr));
 
+		/* 标记已通过认证 */
 		sta->flags |= WLAN_STA_AUTHORIZED;
 	} else {
 		if (dev_addr)
@@ -825,6 +835,7 @@ void ap_sta_set_authorized(struct hostapd_data *hapd, struct sta_info *sta,
 			wpa_msg(hapd->msg_ctx_parent, MSG_INFO,
 				AP_STA_DISCONNECTED MACSTR,
 				MAC2STR(sta->addr));
+		/* 去掉认证标记 */
 		sta->flags &= ~WLAN_STA_AUTHORIZED;
 	}
 

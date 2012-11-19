@@ -228,6 +228,10 @@ static void accounting_interim_update(void *eloop_ctx, void *timeout_ctx)
 }
 
 
+/*
+对@sta开始记账
+启动一个记账定时器
+*/
 /**
  * accounting_sta_start - Start STA accounting
  * @hapd: hostapd BSS data
@@ -254,21 +258,27 @@ void accounting_sta_start(struct hostapd_data *hapd, struct sta_info *sta)
 	sta->acct_input_gigawords = sta->acct_output_gigawords = 0;
 	hostapd_drv_sta_clear_stats(hapd, sta->addr);
 
+	/* 没有记账服务器 */
 	if (!hapd->conf->radius->acct_server)
 		return;
 
+	/* 记账间隔 */
 	if (sta->acct_interim_interval)
 		interval = sta->acct_interim_interval;
 	else
 		interval = ACCT_DEFAULT_UPDATE_INTERVAL;
+	/* 注册记账间隔定时器 */
 	eloop_register_timeout(interval, 0, accounting_interim_update,
 			       hapd, sta);
 
+	/* 构造记账开始消息报文 */
 	msg = accounting_msg(hapd, sta, RADIUS_ACCT_STATUS_TYPE_START);
+	/* 发送报文 */
 	if (msg &&
 	    radius_client_send(hapd->radius, msg, RADIUS_ACCT, sta->addr) < 0)
 		radius_msg_free(msg);
 
+	/* 标记记账会话已开始 */
 	sta->acct_session_started = 1;
 }
 

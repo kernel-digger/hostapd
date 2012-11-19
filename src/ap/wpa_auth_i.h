@@ -52,22 +52,51 @@ struct wpa_state_machine {
 		WPA_PTK_GROUP_KEYERROR
 	} wpa_ptk_group_state;
 
+	/* Init - This variable is used to initialize per-STA state machine. */
 	Boolean Init;
+	/* DeauthenticationRequest - This variable is set to TRUE
+	if a Disassociation or Deauthentication message is received. */
 	Boolean DeauthenticationRequest;
+	/* AuthenticationRequest - This variable is set to TRUE
+	by the STA's IEEE 802.11 management entity in order to authenticate an association.
+	This can be set to TRUE when the STA associates or at other times. */
 	Boolean AuthenticationRequest;
+	/* ReAuthenticationRequest - This variable is set to TRUE
+	if the IEEE 802.1X Authenticator received an eapStart or 802.1X::reAuthenticate is 1. */
 	Boolean ReAuthenticationRequest;
+	/* Disconnect - This variable is set to TRUE
+	when the STA should initiate a deauthentication. */
 	Boolean Disconnect;
+	/* TimeoutCtr - This variable maintains the count of EAPOL-Key receive timeouts.
+	It is incremented each time a timeout occurs on EAPOL-Key receive event
+	and is initialized to 0. */
 	int TimeoutCtr;
+	/* GTimeoutCtr - This variable maintains the count of EAPOL-Key receive timeouts
+	for the Group Key Handshake. It is incremented each time a timeout
+	occurs on EAPOL-Key receive event and is initialized to 0. */
 	int GTimeoutCtr;
+	/* TimeoutEvt - This variable is set to TRUE
+	if the EAPOL-Key frame sent out fails to obtain a response from the Supplicant.
+	The variable may be set to 1 by management action
+	or set to 1 by the operation of a timeout while in the PTKSTART and REKEYNEGOTIATING states. */
 	Boolean TimeoutEvt;
+	/* EAPOLKeyReceived - This variable is set to TRUE
+	when an EAPOL-Key frame is received. */
 	Boolean EAPOLKeyReceived;
 	Boolean EAPOLKeyPairwise;
 	Boolean EAPOLKeyRequest;
+	/* MICVerified - This variable is set to TRUE
+	if the MIC on the received EAPOL-Key frame is verified and is correct.
+	Any EAPOL-Key frames with an invalid MIC are dropped and ignored. */
 	Boolean MICVerified;
+	/* GUpdateStationKeys - This variable is set to TRUE
+	when a new GTK is available to be sent to Supplicants. */
 	Boolean GUpdateStationKeys;
+	/* ANonce - This variable holds the current nonce to be used if the STA is an Authenticator. */
 	u8 ANonce[WPA_NONCE_LEN];
 	u8 SNonce[WPA_NONCE_LEN];
 	u8 PMK[PMK_LEN];
+	/* PTK - This variable is the current PTK. */
 	struct wpa_ptk PTK;
 	Boolean PTK_valid;
 	Boolean pairwise_set;
@@ -140,13 +169,26 @@ struct wpa_group {
 	struct wpa_group *next;
 	int vlan_id;
 
+	/* GInit - This variable is used to initialize the group key state machine.
+	This is a group variable. */
 	Boolean GInit;
+	/* GKeyDoneStations - Count of number of STAs left to have their GTK updated.
+	This is a global variable. */
 	int GKeyDoneStations;
+	/* GTKReKey - This variable is set to TRUE when a Group Key Handshake is required.
+	This is a global variable. */
 	Boolean GTKReKey;
 	int GTK_len;
+	/* GN, GM - These are the current key indices for GTKs.
+	Swap(GM, GN) means that the global key index in GN is swapped with
+	the global key index in GM, so now GM and GN are reversed. */
 	int GN, GM;
+	/* GTKAuthenticator - This variable is set to TRUE
+	if the Authenticator is on an AP
+	or it is the designated Authenticator for an IBSS. */
 	Boolean GTKAuthenticator;
-	/* 在wpa_group_init_gmk_and_counter中初始化 */
+	/* Counter - This variable is the global STA key counter.
+	在wpa_group_init_gmk_and_counter中初始化 */
 	u8 Counter[WPA_NONCE_LEN];
 
 	enum {
@@ -154,8 +196,10 @@ struct wpa_group {
 		WPA_GROUP_SETKEYS, WPA_GROUP_SETKEYSDONE
 	} wpa_group_state;
 
-	/* 在wpa_group_init_gmk_and_counter中初始化 */
+	/* GMK - This variable is the buffer holding the current PMK.
+	在wpa_group_init_gmk_and_counter中初始化 */
 	u8 GMK[WPA_GMK_LEN];
+	/* GTK - This variable is the current GTKs for each GTK index. */
 	u8 GTK[2][WPA_GTK_MAX_LEN];
 	u8 GNonce[WPA_NONCE_LEN];
 	Boolean changed;
@@ -196,6 +240,7 @@ struct wpa_authenticator {
 	/* 认证点的MAC，比如VAP的MAC(bssid) */
 	u8 addr[ETH_ALEN];
 
+	/* hostapd_setup_wpa => wpa_init => pmksa_cache_auth_init */
 	struct rsn_pmksa_cache *pmksa;
 	struct wpa_ft_pmk_cache *ft_pmk_cache;
 };

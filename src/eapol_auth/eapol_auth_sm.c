@@ -852,6 +852,9 @@ eapol_auth_alloc(struct eapol_authenticator *eapol, const u8 *addr,
 }
 
 
+/*
+ÊÍ·ÅEAPOL×´Ì¬»ú@sm
+*/
 void eapol_auth_free(struct eapol_state_machine *sm)
 {
 	if (sm == NULL)

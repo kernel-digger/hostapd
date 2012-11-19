@@ -199,6 +199,9 @@ int hostapd_set_ap_wps_ie(struct hostapd_data *hapd)
 }
 
 
+/*
+向驱动中设置@authorized状态
+*/
 int hostapd_set_authorized(struct hostapd_data *hapd,
 			   struct sta_info *sta, int authorized)
 {
@@ -591,6 +594,7 @@ int hostapd_drv_sta_deauth(struct hostapd_data *hapd,
 {
 	if (hapd->driver == NULL || hapd->driver->sta_deauth == NULL)
 		return 0;
+	/* atheros_sta_deauth */
 	return hapd->driver->sta_deauth(hapd->drv_priv, hapd->own_addr, addr,
 					reason);
 }

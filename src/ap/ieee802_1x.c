@@ -985,6 +985,9 @@ void ieee802_1x_new_station(struct hostapd_data *hapd, struct sta_info *sta)
 }
 
 
+/*
+释放8021X认证相关数据
+*/
 void ieee802_1x_free_station(struct sta_info *sta)
 {
 	struct eapol_state_machine *sm = sta->eapol_sm;

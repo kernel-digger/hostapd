@@ -85,6 +85,7 @@ static inline int wpa_auth_get_eapol(struct wpa_authenticator *wpa_auth,
 {
 	if (wpa_auth->cb.get_eapol == NULL)
 		return -1;
+	/* hostapd_wpa_auth_get_eapol */
 	return wpa_auth->cb.get_eapol(wpa_auth->cb.ctx, addr, var);
 }
 
@@ -201,6 +202,7 @@ static void wpa_sta_disconnect(struct wpa_authenticator *wpa_auth,
 {
 	if (wpa_auth->cb.disconnect == NULL)
 		return;
+	/* hostapd_wpa_auth_disconnect */
 	wpa_auth->cb.disconnect(wpa_auth->cb.ctx, addr,
 				WLAN_REASON_PREV_AUTH_NOT_VALID);
 }
@@ -1133,7 +1135,11 @@ void wpa_receive(struct wpa_authenticator *wpa_auth,
 	sm->EAPOLKeyReceived = TRUE;
 	sm->EAPOLKeyPairwise = !!(key_info & WPA_KEY_INFO_KEY_TYPE);
 	sm->EAPOLKeyRequest = !!(key_info & WPA_KEY_INFO_REQUEST);
+	/* 保存请求者随机数 */
 	os_memcpy(sm->SNonce, key->key_nonce, WPA_NONCE_LEN);
+	/* 状态机分支函数
+	   应该进入PTKCALCNEGOTIATING状态函数
+	*/
 	wpa_sm_step(sm);
 }
 
@@ -1542,6 +1548,13 @@ static enum wpa_alg wpa_alg_enum(int alg)
 }
 
 
+/*
+INITIALIZE : This state is entered from the DISCONNECTED state, when a deauthentication
+request event occurs, or when the STA initializes.
+The state initializes the key state variables.
+
+由Init或DISCONNECTED状态切换过来
+*/
 SM_STATE(WPA_PTK, INITIALIZE)
 {
 	/* 标记状态为sm->wpa_ptk_state = WPA_PTK_INITIALIZE */
@@ -1552,19 +1565,27 @@ SM_STATE(WPA_PTK, INITIALIZE)
 		sm->changed = FALSE;
 	}
 
+	/* Keycount = 0 */
 	sm->keycount = 0;
+	/* If GUpdateStationKeys == TRUE */
 	if (sm->GUpdateStationKeys)
+		/* GKeyDoneStation-- */
 		sm->group->GKeyDoneStations--;
+	/* GUpdateStationKeys = FALSE */
 	sm->GUpdateStationKeys = FALSE;
 	/* WPA1 */
 	if (sm->wpa == WPA_VERSION_WPA)
 		sm->PInitAKeys = FALSE;
+
 	if (1 /* Unicast cipher supported AND (ESS OR ((IBSS or WDS) and
 	       * Local AA > Remote AA)) */) {
 		sm->Pair = TRUE;
 	}
+	/* 802.1X::portEnable = FALSE */
 	wpa_auth_set_eapol(sm->wpa_auth, sm->addr, WPA_EAPOL_portEnabled, 0);
+	/* PTK = 0 */
 	wpa_remove_ptk(sm);
+	/* 802.1X::PortValid = FALSE */
 	wpa_auth_set_eapol(sm->wpa_auth, sm->addr, WPA_EAPOL_portValid, 0);
 	sm->TimeoutCtr = 0;
 	if (wpa_key_mgmt_wpa_psk(sm->wpa_key_mgmt)) {
@@ -1574,14 +1595,29 @@ SM_STATE(WPA_PTK, INITIALIZE)
 }
 
 
+/*
+DISCONNECT : This state is entered if an EAPOL-Key frame is received and fails its MIC check.
+It sends a Deauthentication message to the STA and enters the INITIALIZE state.
+
+1. Disconnect
+2. dot11RSNAConfigSALifetime timeout from INITPMK, PTKSTART
+*/
 SM_STATE(WPA_PTK, DISCONNECT)
 {
 	SM_ENTRY_MA(WPA_PTK, DISCONNECT, wpa_ptk);
+	/* Disconnect = FALSE */
 	sm->Disconnect = FALSE;
+	/* STADisconnect */
 	wpa_sta_disconnect(sm->wpa_auth, sm->addr);
 }
 
 
+/*
+DISCONNECTED : This state is entered when Disassociation or Deauthentication messages are
+received.
+
+由DISCONNECT状态无条件转变过来
+*/
 SM_STATE(WPA_PTK, DISCONNECTED)
 {
 	SM_ENTRY_MA(WPA_PTK, DISCONNECTED, wpa_ptk);
@@ -1589,14 +1625,22 @@ SM_STATE(WPA_PTK, DISCONNECTED)
 }
 
 
+/*
+AUTHENTICATION : This state is entered when an AuthenticationRequest is sent from the
+management entity to authenticate a BSSID.
+*/
 SM_STATE(WPA_PTK, AUTHENTICATION)
 {
 	SM_ENTRY_MA(WPA_PTK, AUTHENTICATION, wpa_ptk);
+	/* PTK = 0 */
 	os_memset(&sm->PTK, 0, sizeof(sm->PTK));
 	sm->PTK_valid = FALSE;
+	/* 802.1X::portControl = Auto */
 	wpa_auth_set_eapol(sm->wpa_auth, sm->addr, WPA_EAPOL_portControl_Auto,
 			   1);
+	/* 802.1X::portEnable = TRUE */
 	wpa_auth_set_eapol(sm->wpa_auth, sm->addr, WPA_EAPOL_portEnabled, 1);
+	/* AuthenticationRequest = FALSE */
 	sm->AuthenticationRequest = FALSE;
 }
 
@@ -1627,6 +1671,10 @@ static void wpa_group_first_station(struct wpa_authenticator *wpa_auth,
 }
 
 
+/*
+AUTHENTICATION2 : This state is entered from the AUTHENTICATION state or from the
+PTKINITDONE state.
+*/
 SM_STATE(WPA_PTK, AUTHENTICATION2)
 {
 	SM_ENTRY_MA(WPA_PTK, AUTHENTICATION2, wpa_ptk);
@@ -1637,11 +1685,13 @@ SM_STATE(WPA_PTK, AUTHENTICATION2)
 		sm->group->first_sta_seen = TRUE;
 	}
 
+	/* ANonce = Counter++ */
 	/* 认证者随机数 */
 	os_memcpy(sm->ANonce, sm->group->Counter, WPA_NONCE_LEN);
 	wpa_hexdump(MSG_DEBUG, "WPA: Assign ANonce", sm->ANonce,
 		    WPA_NONCE_LEN);
 	inc_byte_array(sm->group->Counter, WPA_NONCE_LEN);
+	/* ReAuthenticationRequest = FALSE */
 	sm->ReAuthenticationRequest = FALSE;
 	/* IEEE 802.11i does not clear TimeoutCtr here, but this is more
 	 * logical place than INITIALIZE since AUTHENTICATION2 can be
@@ -1651,6 +1701,11 @@ SM_STATE(WPA_PTK, AUTHENTICATION2)
 }
 
 
+/*
+INITPMK : This state is entered when the IEEE 802.1X backend AS completes successfully. If a
+PMK is supplied, it goes to the PTKSTART state; otherwise, it goes to the DISCONNECTED state.
+
+*/
 SM_STATE(WPA_PTK, INITPMK)
 {
 	u8 msk[2 * PMK_LEN];
@@ -1690,13 +1745,19 @@ SM_STATE(WPA_PTK, INITPMK)
 }
 
 
-/* 设置PMK */
+/*
+INITPSK : This state is entered when a PSK is configured.
+
+设置PMK
+
+*/
 SM_STATE(WPA_PTK, INITPSK)
 {
 	const u8 *psk;
 	SM_ENTRY_MA(WPA_PTK, INITPSK, wpa_ptk);
 	/* 取PSK */
 	psk = wpa_auth_get_psk(sm->wpa_auth, sm->addr, NULL);
+	/* PMK = PSK */
 	/* 预共享密钥方式下，PMK等于PSK */
 	if (psk) {
 		os_memcpy(sm->PMK, psk, PMK_LEN);
@@ -1710,6 +1771,9 @@ SM_STATE(WPA_PTK, INITPSK)
 
 
 /*
+PTKSTART : This state is entered from INITPMK or INITPSK to start the 4-Way Handshake or if
+no response to the 4-Way Handshake occurs.
+
 4路握手第一步
 */
 SM_STATE(WPA_PTK, PTKSTART)
@@ -1721,6 +1785,7 @@ SM_STATE(WPA_PTK, PTKSTART)
 	sm->PTKRequest = FALSE;
 	sm->TimeoutEvt = FALSE;
 
+	/* TimeoutCtr++ */
 	sm->TimeoutCtr++;
 	if (sm->TimeoutCtr > (int) dot11RSNAConfigPairwiseUpdateCount) {
 		/* No point in sending the EAPOL-Key - we will disconnect
@@ -1754,6 +1819,7 @@ SM_STATE(WPA_PTK, PTKSTART)
 				  wpa_key_mgmt_sha256(sm->wpa_key_mgmt));
 		}
 	}
+	/* Send EAPOL(0, 0, 1, 0, P, 0, 0, ANonce, 0, 0) */
 	/* 发送EAPOL-KEY报文 */
 	wpa_send_eapol(sm->wpa_auth, sm,
 		       WPA_KEY_INFO_ACK | WPA_KEY_INFO_KEY_TYPE, NULL,
@@ -1782,7 +1848,11 @@ static int wpa_derive_ptk(struct wpa_state_machine *sm, const u8 *pmk,
 }
 
 /*
+PTKCALCNEGOTIATING : This state is entered when the second EAPOL-Key frame for the
+4-Way Handshake is received with the key type of Pairwise.
+
 PTK计算协商
+收到第2个握手报文
 */
 SM_STATE(WPA_PTK, PTKCALCNEGOTIATING)
 {
@@ -1868,9 +1938,16 @@ SM_STATE(WPA_PTK, PTKCALCNEGOTIATING)
 }
 
 
+/*
+PTKCALNEGOTIATING2 : This state is entered when the MIC for the second EAPOL-Key
+frame of the 4-Way Handshake is verified.
+
+MICVerified = TRUE进入这个状态
+*/
 SM_STATE(WPA_PTK, PTKCALCNEGOTIATING2)
 {
 	SM_ENTRY_MA(WPA_PTK, PTKCALCNEGOTIATING2, wpa_ptk);
+	/* TimeoutCtr = 0 */
 	sm->TimeoutCtr = 0;
 }
 
@@ -1923,6 +2000,16 @@ static u8 * ieee80211w_kde_add(struct wpa_state_machine *sm, u8 *pos)
 #endif /* CONFIG_IEEE80211W */
 
 
+/*
+PTKINITNEGOTIATING : This state is entered when the MIC for the second EAPOL-Key frame
+for the 4-Way Handshake is verified. When Message 3 of the 4-Way Handshake is sent in state
+PTKINITNEGOTIATING, the encrypted GTK shall be sent at the end of the data field, and the
+GTK length is put in the GTK Length field.
+
+PTK MIC通过验证
+由PTKCALCNEGOTIATING2状态无条件转变过来
+发送第3个握手报文
+*/
 SM_STATE(WPA_PTK, PTKINITNEGOTIATING)
 {
 	u8 rsc[WPA_KEY_RSC_LEN], *_rsc, *gtk, *kde, *pos;
@@ -1934,6 +2021,7 @@ SM_STATE(WPA_PTK, PTKINITNEGOTIATING)
 	SM_ENTRY_MA(WPA_PTK, PTKINITNEGOTIATING, wpa_ptk);
 	sm->TimeoutEvt = FALSE;
 
+	/* TimeoutCtr++ */
 	sm->TimeoutCtr++;
 	if (sm->TimeoutCtr > (int) dot11RSNAConfigPairwiseUpdateCount) {
 		/* No point in sending the EAPOL-Key - we will disconnect
@@ -2060,6 +2148,7 @@ SM_STATE(WPA_PTK, PTKINITNEGOTIATING)
 	}
 #endif /* CONFIG_IEEE80211R */
 
+	/* Send EAPOL(1,1,1,Pair,P,0,RSC,ANonce,MIC(PTK),RSNE,GTK[N],IGTK[M]) */
 	wpa_send_eapol(sm->wpa_auth, sm,
 		       (secure ? WPA_KEY_INFO_SECURE : 0) | WPA_KEY_INFO_MIC |
 		       WPA_KEY_INFO_ACK | WPA_KEY_INFO_INSTALL |
@@ -2069,6 +2158,13 @@ SM_STATE(WPA_PTK, PTKINITNEGOTIATING)
 }
 
 
+/*
+PTKINITDONE : This state is entered when the last EAPOL-Key frame for the 4-Way Handshake
+is received with the key type of Pairwise. This state may call SetPTK; if this call fails, the AP
+should detect and recover from the situation, for example, by doing a disconnect event for this
+association.
+
+*/
 SM_STATE(WPA_PTK, PTKINITDONE)
 {
 	SM_ENTRY_MA(WPA_PTK, PTKINITDONE, wpa_ptk);
@@ -2111,10 +2207,12 @@ SM_STATE(WPA_PTK, PTKINITDONE)
 					   WPA_EAPOL_portValid, 1);
 		}
 	} else {
+		/* 802.1X::PortValid = TRUE */
 		wpa_auth_set_eapol(sm->wpa_auth, sm->addr, WPA_EAPOL_portValid,
 				   1);
 	}
 	wpa_auth_set_eapol(sm->wpa_auth, sm->addr, WPA_EAPOL_keyAvailable, 0);
+	/* 802.1X::keyDone = TRUE */
 	wpa_auth_set_eapol(sm->wpa_auth, sm->addr, WPA_EAPOL_keyDone, 1);
 	if (sm->wpa == WPA_VERSION_WPA)
 		sm->PInitAKeys = TRUE;
@@ -2132,6 +2230,8 @@ SM_STATE(WPA_PTK, PTKINITDONE)
 
 /*
 WPA_PTK分支函数
+
+IEEE Std 802.11-2012, 11.6.11 RSNA Authenticator key management state machine
 */
 SM_STEP(WPA_PTK)
 {
@@ -2166,24 +2266,29 @@ SM_STEP(WPA_PTK)
 		break;
 	/* 由SM_STATE(WPA_PTK, AUTHENTICATION)中切换过来 */
 	case WPA_PTK_AUTHENTICATION:
+		/* 无条件转换到AUTHENTICATION2状态 */
 		SM_ENTER(WPA_PTK, AUTHENTICATION2);
 		break;
 	/* 由SM_STATE(WPA_PTK, AUTHENTICATION2)中切换过来 */
 	case WPA_PTK_AUTHENTICATION2:
+		/* !PSK && 802.1X::keyRun */
 		/* 8021x认证 */
 		if (wpa_key_mgmt_wpa_ieee8021x(sm->wpa_key_mgmt) &&
 		    wpa_auth_get_eapol(sm->wpa_auth, sm->addr,
 				       WPA_EAPOL_keyRun) > 0)
 			SM_ENTER(WPA_PTK, INITPMK);
+		/* PSK && 802.1X::keyRun */
 		/* 预共享密钥 */
 		else if (wpa_key_mgmt_wpa_psk(sm->wpa_key_mgmt)
 			 /* FIX: && 802.1X::keyRun */)
 			SM_ENTER(WPA_PTK, INITPSK);
 		break;
 	case WPA_PTK_INITPMK:
+		/* 802.1X::keyAvailable */
 		if (wpa_auth_get_eapol(sm->wpa_auth, sm->addr,
 				       WPA_EAPOL_keyAvailable) > 0)
 			SM_ENTER(WPA_PTK, PTKSTART);
+		/* !802.1X::keyAvailable*/
 		else {
 			wpa_auth->dot11RSNA4WayHandshakeFailures++;
 			wpa_auth_logger(sm->wpa_auth, sm->addr, LOGGER_INFO,
@@ -2193,10 +2298,12 @@ SM_STEP(WPA_PTK)
 		break;
 	/* 由SM_STATE(WPA_PTK, INITPSK)中切换过来 */
 	case WPA_PTK_INITPSK:
+		/* 802.1X::keyAvailable */
 		/* PSK已设置 */
 		if (wpa_auth_get_psk(sm->wpa_auth, sm->addr, NULL))
 			/* 开始4路握手第一步 */
 			SM_ENTER(WPA_PTK, PTKSTART);
+		/* !802.1X::keyAvailable */
 		else {
 			wpa_auth_logger(sm->wpa_auth, sm->addr, LOGGER_INFO,
 					"no PSK configured for the STA");
@@ -2206,10 +2313,12 @@ SM_STEP(WPA_PTK)
 		break;
 	/* 由SM_STATE(WPA_PTK, PTKSTART)中切换过来 */
 	case WPA_PTK_PTKSTART:
+		/* EAPOLKeyReceived && !Request && K == Pairwise */
 		/* wpa_receive中收到STA的EAPOL-KEY报文 */
 		if (sm->EAPOLKeyReceived && !sm->EAPOLKeyRequest &&
 		    sm->EAPOLKeyPairwise)
 			SM_ENTER(WPA_PTK, PTKCALCNEGOTIATING);
+		/* TimeoutCtr > N */
 		/* 达到重传次数 */
 		else if (sm->TimeoutCtr >
 			 (int) dot11RSNAConfigPairwiseUpdateCount) {
@@ -2218,6 +2327,7 @@ SM_STEP(WPA_PTK)
 					 "PTKSTART: Retry limit %d reached",
 					 dot11RSNAConfigPairwiseUpdateCount);
 			SM_ENTER(WPA_PTK, DISCONNECT);
+		/* TimeoutEvt */
 		/* 重传定时器wpa_send_eapol_timeout中过来 */
 		} else if (sm->TimeoutEvt)
 			SM_ENTER(WPA_PTK, PTKSTART);
@@ -2239,9 +2349,12 @@ SM_STEP(WPA_PTK)
 		SM_ENTER(WPA_PTK, PTKINITNEGOTIATING);
 		break;
 	case WPA_PTK_PTKINITNEGOTIATING:
+		/* EAPOLKeyReceived && !Request && K == Pairwise && MICVerified */
 		if (sm->EAPOLKeyReceived && !sm->EAPOLKeyRequest &&
 		    sm->EAPOLKeyPairwise && sm->MICVerified)
+			/* 进入PTKINITDONE状态 */
 			SM_ENTER(WPA_PTK, PTKINITDONE);
+		/* TimeoutCtr > N */
 		else if (sm->TimeoutCtr >
 			 (int) dot11RSNAConfigPairwiseUpdateCount) {
 			wpa_auth->dot11RSNA4WayHandshakeFailures++;
@@ -2250,6 +2363,7 @@ SM_STEP(WPA_PTK)
 					 "reached",
 					 dot11RSNAConfigPairwiseUpdateCount);
 			SM_ENTER(WPA_PTK, DISCONNECT);
+		/* TimeoutEvt */
 		} else if (sm->TimeoutEvt)
 			SM_ENTER(WPA_PTK, PTKINITNEGOTIATING);
 		break;
@@ -2259,6 +2373,14 @@ SM_STEP(WPA_PTK)
 }
 
 
+/*
+IDLE : This state is entered when no Group Key Handshake is occurring.
+
+1. Init
+2. REKEYESTABLISHED
+3. KEYERROR
+转变过来
+*/
 SM_STATE(WPA_PTK_GROUP, IDLE)
 {
 	SM_ENTRY_MA(WPA_PTK_GROUP, IDLE, wpa_ptk_group);
@@ -2267,10 +2389,15 @@ SM_STATE(WPA_PTK_GROUP, IDLE)
 		 * loop by claiming nothing changed. */
 		sm->changed = FALSE;
 	}
+	/* GTimeoutCtr = 0 */
 	sm->GTimeoutCtr = 0;
 }
 
 
+/*
+REKEYNEGOTIATING : This state is entered when the GTK is to be sent to the Supplicant.
+
+*/
 SM_STATE(WPA_PTK_GROUP, REKEYNEGOTIATING)
 {
 	u8 rsc[WPA_KEY_RSC_LEN];
@@ -2280,6 +2407,7 @@ SM_STATE(WPA_PTK_GROUP, REKEYNEGOTIATING)
 
 	SM_ENTRY_MA(WPA_PTK_GROUP, REKEYNEGOTIATING, wpa_ptk_group);
 
+	/* GTimeoutCtr++ */
 	sm->GTimeoutCtr++;
 	if (sm->GTimeoutCtr > (int) dot11RSNAConfigGroupUpdateCount) {
 		/* No point in sending the EAPOL-Key - we will disconnect
@@ -2315,6 +2443,7 @@ SM_STATE(WPA_PTK_GROUP, REKEYNEGOTIATING)
 		pos = kde + gsm->GTK_len;
 	}
 
+	/* Send EAPOL(1, 1, 1, !Pair, G, 0, RSC, GNonce, MIC(PTK), GTK[GN]) */
 	wpa_send_eapol(sm->wpa_auth, sm,
 		       WPA_KEY_INFO_SECURE | WPA_KEY_INFO_MIC |
 		       WPA_KEY_INFO_ACK |
@@ -2325,12 +2454,19 @@ SM_STATE(WPA_PTK_GROUP, REKEYNEGOTIATING)
 }
 
 
+/*
+REKEYESTABLISHED : This state is entered when an EAPOL-Key frame is received from the
+Supplicant with the Key Type subfield equal to Group.
+
+*/
 SM_STATE(WPA_PTK_GROUP, REKEYESTABLISHED)
 {
 	SM_ENTRY_MA(WPA_PTK_GROUP, REKEYESTABLISHED, wpa_ptk_group);
 	sm->EAPOLKeyReceived = FALSE;
 	if (sm->GUpdateStationKeys)
+		/* GKeyDoneStations-- */
 		sm->group->GKeyDoneStations--;
+	/* GUpdateStationKeys = FALSE */
 	sm->GUpdateStationKeys = FALSE;
 	sm->GTimeoutCtr = 0;
 	/* FIX: MLME.SetProtection.Request(TA, Tx_Rx) */
@@ -2341,16 +2477,29 @@ SM_STATE(WPA_PTK_GROUP, REKEYESTABLISHED)
 }
 
 
+/*
+KEYERROR : This state is entered if the EAPOL-Key acknowledgment for the Group Key
+Handshake is not received.
+
+*/
 SM_STATE(WPA_PTK_GROUP, KEYERROR)
 {
 	SM_ENTRY_MA(WPA_PTK_GROUP, KEYERROR, wpa_ptk_group);
 	if (sm->GUpdateStationKeys)
+		/* GKeyDoneStations-- */
 		sm->group->GKeyDoneStations--;
+	/* GUpdateStationKeys = FALSE */
 	sm->GUpdateStationKeys = FALSE;
+	/* Disconnect = TRUE */
 	sm->Disconnect = TRUE;
 }
 
 
+/*
+IEEE Std 802.11-2012, 11.6.11 RSNA Authenticator key management state machine
+Figure 11-46—Authenticator state machines, part 3
+
+*/
 SM_STEP(WPA_PTK_GROUP)
 {
 	if (sm->Init || sm->PtkGroupInit) {
@@ -2358,17 +2507,23 @@ SM_STEP(WPA_PTK_GROUP)
 		sm->PtkGroupInit = FALSE;
 	} else switch (sm->wpa_ptk_group_state) {
 	case WPA_PTK_GROUP_IDLE:
+		/* GUpdateStationKeys */
 		if (sm->GUpdateStationKeys ||
 		    (sm->wpa == WPA_VERSION_WPA && sm->PInitAKeys))
 			SM_ENTER(WPA_PTK_GROUP, REKEYNEGOTIATING);
 		break;
 	case WPA_PTK_GROUP_REKEYNEGOTIATING:
+		/* EAPOLKeyReceived && !Request && K == Group && MICVerified */
 		if (sm->EAPOLKeyReceived && !sm->EAPOLKeyRequest &&
 		    !sm->EAPOLKeyPairwise && sm->MICVerified)
 			SM_ENTER(WPA_PTK_GROUP, REKEYESTABLISHED);
+		/* GTimeoutCtr > N */
+		/* 达到重传次数 */
 		else if (sm->GTimeoutCtr >
 			 (int) dot11RSNAConfigGroupUpdateCount)
 			SM_ENTER(WPA_PTK_GROUP, KEYERROR);
+		/* TimeoutEvt */
+		/* 定时器到 */
 		else if (sm->TimeoutEvt)
 			SM_ENTER(WPA_PTK_GROUP, REKEYNEGOTIATING);
 		break;
@@ -2414,6 +2569,10 @@ static int wpa_gtk_update(struct wpa_authenticator *wpa_auth,
 }
 
 
+/*
+GTK_INIT : This state is entered on system initialization.
+
+*/
 static void wpa_group_gtk_init(struct wpa_authenticator *wpa_auth,
 			       struct wpa_group *group)
 {
@@ -2462,6 +2621,10 @@ static int wpa_group_update_sta(struct wpa_state_machine *sm, void *ctx)
 }
 
 
+/*
+SETKEYS : This state is entered if the GTK is to be updated on all Supplicants.
+
+*/
 static void wpa_group_setkeys(struct wpa_authenticator *wpa_auth,
 			      struct wpa_group *group)
 {
@@ -2521,6 +2684,10 @@ static int wpa_group_config_group_keys(struct wpa_authenticator *wpa_auth,
 }
 
 
+/*
+SETKEYSDONE : This state is entered if the GTK has been updated on all Supplicants.
+
+*/
 static int wpa_group_setkeysdone(struct wpa_authenticator *wpa_auth,
 				 struct wpa_group *group)
 {
@@ -2580,12 +2747,15 @@ static int wpa_sm_step(struct wpa_state_machine *sm)
 		sm->changed = FALSE;
 		sm->wpa_auth->group->changed = FALSE;
 
+		/* 4-Way Handshake (per STA) */
 		SM_STEP_RUN(WPA_PTK);
 		if (sm->pending_deinit)
 			break;
+		/* Group Key Handshake (per STA) */
 		SM_STEP_RUN(WPA_PTK_GROUP);
 		if (sm->pending_deinit)
 			break;
+		/* Group Key Handshake (global) */
 		wpa_group_sm_step(sm->wpa_auth, sm->group);
 	/* 状态发生变化，继续调用状态机分支函数 */
 	} while (sm->changed || sm->wpa_auth->group->changed);
