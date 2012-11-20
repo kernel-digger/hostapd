@@ -494,13 +494,18 @@ hostapd_config_read_radius_addr(struct hostapd_radius_server **server,
 	int ret;
 	static int server_index = 1;
 
+	/* 重新分配空间 */
 	nserv = os_realloc(*server, (*num_server + 1) * sizeof(*nserv));
 	if (nserv == NULL)
 		return -1;
 
+	/* 记录新空间地址 */
 	*server = nserv;
+	/* 新值存在最后一项中 */
 	nserv = &nserv[*num_server];
+	/* 个数增1 */
 	(*num_server)++;
+	/* 最新的配置设为当前使用 */
 	(*curr_serv) = nserv;
 
 	os_memset(nserv, 0, sizeof(*nserv));

@@ -893,6 +893,7 @@ static void eapol_sm_step_run(struct eapol_state_machine *sm)
 	 * eloop callback.
 	 */
 restart:
+	/* 记录先前状态 */
 	prev_auth_pae = sm->auth_pae_state;
 	prev_be_auth = sm->be_auth_state;
 	prev_reauth_timer = sm->reauth_timer_state;
@@ -912,13 +913,16 @@ restart:
 	if (sm->initializing || eapol_sm_sta_entry_alive(eapol, addr))
 		SM_STEP_RUN(CTRL_DIR);
 
+	/* 状态有变化 */
 	if (prev_auth_pae != sm->auth_pae_state ||
 	    prev_be_auth != sm->be_auth_state ||
 	    prev_reauth_timer != sm->reauth_timer_state ||
 	    prev_auth_key_tx != sm->auth_key_tx_state ||
 	    prev_key_rx != sm->key_rx_state ||
 	    prev_ctrl_dir != sm->ctrl_dir_state) {
+		/* 100步还没用完 */
 		if (--max_steps > 0)
+			/* 继续 */
 			goto restart;
 		/* 加入定时器，退出当前调用路径 */
 		/* Re-run from eloop timeout */

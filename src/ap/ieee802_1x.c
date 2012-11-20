@@ -1734,6 +1734,9 @@ static void ieee802_1x_eapol_event(void *ctx, void *sta_ctx,
 }
 
 
+/*
+由hostapd_setup_bss中调用
+*/
 int ieee802_1x_init(struct hostapd_data *hapd)
 {
 	int i;
@@ -1788,6 +1791,7 @@ int ieee802_1x_init(struct hostapd_data *hapd)
 		return -1;
 
 #ifndef CONFIG_NO_RADIUS
+	/* 注册RADIUS认证报文接收函数 */
 	if (radius_client_register(hapd->radius, RADIUS_AUTH,
 				   ieee802_1x_receive_auth, hapd))
 		return -1;

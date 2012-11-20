@@ -1141,6 +1141,10 @@ radius_change_server(struct radius_client_data *radius,
 }
 
 
+/*
+配置的第一项为主服务器
+定期尝试连接主服务器
+*/
 static void radius_retry_primary_timer(void *eloop_ctx, void *timeout_ctx)
 {
 	struct radius_client_data *radius = eloop_ctx;
@@ -1325,16 +1329,19 @@ radius_client_init(void *ctx, struct hostapd_radius_servers *conf)
 		radius->auth_serv_sock6 = radius->acct_serv_sock6 =
 		radius->auth_sock = radius->acct_sock = -1;
 
+	/* 连接RADIUS认证服务器 */
 	if (conf->auth_server && radius_client_init_auth(radius)) {
 		radius_client_deinit(radius);
 		return NULL;
 	}
 
+	/* 连接RADIUS记账服务器 */
 	if (conf->acct_server && radius_client_init_acct(radius)) {
 		radius_client_deinit(radius);
 		return NULL;
 	}
 
+	/* 重试主服务器定时器 */
 	if (conf->retry_primary_interval)
 		eloop_register_timeout(conf->retry_primary_interval, 0,
 				       radius_retry_primary_timer, radius,

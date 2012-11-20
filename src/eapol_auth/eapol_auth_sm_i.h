@@ -177,6 +177,7 @@ struct eapol_state_machine {
 	Boolean initializing; /* in process of initializing state machines */
 	Boolean changed;
 
+	/* 指向hostapd_data中的eapol_auth */
 	struct eapol_authenticator *eapol;
 
 	/* struct sta_info */
