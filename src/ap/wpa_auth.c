@@ -149,6 +149,7 @@ int wpa_auth_for_each_sta(struct wpa_authenticator *wpa_auth,
 {
 	if (wpa_auth->cb.for_each_sta == NULL)
 		return 0;
+	/* hostapd_wpa_auth_for_each_sta */
 	return wpa_auth->cb.for_each_sta(wpa_auth->cb.ctx, cb, cb_ctx);
 }
 
@@ -412,8 +413,11 @@ struct wpa_authenticator * wpa_init(const u8 *addr,
 	wpa_auth = os_zalloc(sizeof(struct wpa_authenticator));
 	if (wpa_auth == NULL)
 		return NULL;
+	/* 认证者MAC */
 	os_memcpy(wpa_auth->addr, addr, ETH_ALEN);
+	/* 复制配置参数 */
 	os_memcpy(&wpa_auth->conf, conf, sizeof(*conf));
+	/* 设置回调函数 */
 	os_memcpy(&wpa_auth->cb, cb, sizeof(*cb));
 
 	if (wpa_auth_gen_wpa_ie(wpa_auth)) {
@@ -1647,6 +1651,7 @@ SM_STATE(WPA_PTK, AUTHENTICATION)
 
 /*
 该bss下的第一个STA
+重新初始化组播密钥
 */
 static void wpa_group_first_station(struct wpa_authenticator *wpa_auth,
 				    struct wpa_group *group)
@@ -1690,6 +1695,7 @@ SM_STATE(WPA_PTK, AUTHENTICATION2)
 	os_memcpy(sm->ANonce, sm->group->Counter, WPA_NONCE_LEN);
 	wpa_hexdump(MSG_DEBUG, "WPA: Assign ANonce", sm->ANonce,
 		    WPA_NONCE_LEN);
+	/* 用完+1 */
 	inc_byte_array(sm->group->Counter, WPA_NONCE_LEN);
 	/* ReAuthenticationRequest = FALSE */
 	sm->ReAuthenticationRequest = FALSE;
@@ -2179,11 +2185,13 @@ SM_STATE(WPA_PTK, PTKINITDONE)
 			alg = WPA_ALG_CCMP;
 			klen = 16;
 		}
+		/* 设置加密密钥Temporal Key 1到驱动中 */
 		if (wpa_auth_set_key(sm->wpa_auth, 0, alg, sm->addr, 0,
 				     sm->PTK.tk1, klen)) {
 			wpa_sta_disconnect(sm->wpa_auth, sm->addr);
 			return;
 		}
+		/* 标记成对密钥已设置 */
 		/* FIX: MLME-SetProtection.Request(TA, Tx_Rx) */
 		sm->pairwise_set = TRUE;
 
@@ -2214,8 +2222,13 @@ SM_STATE(WPA_PTK, PTKINITDONE)
 	wpa_auth_set_eapol(sm->wpa_auth, sm->addr, WPA_EAPOL_keyAvailable, 0);
 	/* 802.1X::keyDone = TRUE */
 	wpa_auth_set_eapol(sm->wpa_auth, sm->addr, WPA_EAPOL_keyDone, 1);
+	/* WPA1置PInitAKeys=TRUE，随后在WPA_PTK_GROUP分支函数中进行组播密钥协商
+		SM_STEP(WPA_PTK_GROUP) => case WPA_PTK_GROUP_IDLE:
+		=> SM_ENTER(WPA_PTK_GROUP, REKEYNEGOTIATING);
+	*/
 	if (sm->wpa == WPA_VERSION_WPA)
 		sm->PInitAKeys = TRUE;
+	/* WPA2的组播密钥已在3/4握手中下发 */
 	else
 		sm->has_GTK = TRUE;
 	wpa_auth_vlogger(sm->wpa_auth, sm->addr, LOGGER_INFO,
@@ -2537,13 +2550,20 @@ SM_STEP(WPA_PTK_GROUP)
 }
 
 
+/*
+更新GTK
+新值保存在GTK[group->GN - 1]中
+*/
 static int wpa_gtk_update(struct wpa_authenticator *wpa_auth,
 			  struct wpa_group *group)
 {
 	int ret = 0;
 
+	/* 取一个随机数 */
 	os_memcpy(group->GNonce, group->Counter, WPA_NONCE_LEN);
+	/* 用完+1 */
 	inc_byte_array(group->Counter, WPA_NONCE_LEN);
+	/* 计算GTK */
 	if (wpa_gmk_to_gtk(group->GMK, "Group key expansion",
 			   wpa_auth->addr, group->GNonce,
 			   group->GTK[group->GN - 1], group->GTK_len) < 0)
@@ -2572,6 +2592,8 @@ static int wpa_gtk_update(struct wpa_authenticator *wpa_auth,
 /*
 GTK_INIT : This state is entered on system initialization.
 
+计算GTK
+保存在以GN控制的下标GTK[GN]中
 */
 static void wpa_group_gtk_init(struct wpa_authenticator *wpa_auth,
 			       struct wpa_group *group)
@@ -2594,6 +2616,12 @@ static void wpa_group_gtk_init(struct wpa_authenticator *wpa_auth,
 }
 
 
+/*
+更新每台STA的组播密钥
+
+@sm		: STA的WPA状态机
+@ctx	: NULL
+*/
 static int wpa_group_update_sta(struct wpa_state_machine *sm, void *ctx)
 {
 	if (sm->wpa_ptk_state != WPA_PTK_PTKINITDONE) {
@@ -2614,8 +2642,12 @@ static int wpa_group_update_sta(struct wpa_state_machine *sm, void *ctx)
 	}
 
 	sm->group->GKeyDoneStations++;
+	/* 标记该STA @sm的组播密钥需要更新 */
 	sm->GUpdateStationKeys = TRUE;
 
+	/* 状态机分支函数
+	   此时应该进入SM_STEP(WPA_PTK_GROUP) => case WPA_PTK_GROUP_IDLE
+	*/
 	wpa_sm_step(sm);
 	return 0;
 }
@@ -2635,6 +2667,7 @@ static void wpa_group_setkeys(struct wpa_authenticator *wpa_auth,
 	group->changed = TRUE;
 	group->wpa_group_state = WPA_GROUP_SETKEYS;
 	group->GTKReKey = FALSE;
+	/* 交换GN GM */
 	tmp = group->GM;
 	group->GM = group->GN;
 	group->GN = tmp;
@@ -2654,12 +2687,16 @@ static void wpa_group_setkeys(struct wpa_authenticator *wpa_auth,
 			   group->GKeyDoneStations);
 		group->GKeyDoneStations = 0;
 	}
+	/* 更新每台STA的组播密钥 */
 	wpa_auth_for_each_sta(wpa_auth, wpa_group_update_sta, NULL);
 	wpa_printf(MSG_DEBUG, "wpa_group_setkeys: GKeyDoneStations=%d",
 		   group->GKeyDoneStations);
 }
 
 
+/*
+向驱动中设置组播密钥
+*/
 static int wpa_group_config_group_keys(struct wpa_authenticator *wpa_auth,
 				       struct wpa_group *group)
 {

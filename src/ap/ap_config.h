@@ -227,6 +227,7 @@ struct hostapd_bss_config {
 	   WPA_CIPHER_TKIP WPA_CIPHER_CCMP等的bit位组合
 	*/
 	int wpa_pairwise;
+	/* 组播密钥加密算法，WPA_CIPHER_TKIP或者WPA_CIPHER_CCMP */
 	int wpa_group;
 	int wpa_group_rekey;
 	int wpa_strict_rekey;

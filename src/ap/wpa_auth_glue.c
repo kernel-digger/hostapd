@@ -230,6 +230,7 @@ static int hostapd_wpa_auth_set_key(void *ctx, int vlan_id, enum wpa_alg alg,
 			return -1;
 	}
 
+	/* 将密钥设置到驱动中 */
 	/* atheros_set_key */
 	return hostapd_drv_set_key(ifname, hapd, alg, addr, idx, 1, NULL, 0,
 				   key, key_len);
@@ -268,6 +269,7 @@ static int hostapd_wpa_auth_for_each_sta(
 	struct hostapd_data *hapd = ctx;
 	struct sta_info *sta;
 
+	/* 在每台STA的WPA状态机上调用@cb回调函数 */
 	for (sta = hapd->sta_list; sta; sta = sta->next) {
 		if (sta->wpa_sm && cb(sta->wpa_sm, cb_ctx))
 			return 1;

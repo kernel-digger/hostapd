@@ -234,6 +234,7 @@ struct wpa_authenticator {
 	struct wpa_auth_config conf;
 	struct wpa_auth_callbacks cb;
 
+	/* wpa_init => wpa_auth_gen_wpa_ie */
 	u8 *wpa_ie;
 	size_t wpa_ie_len;
 

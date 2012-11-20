@@ -357,6 +357,7 @@ int hostapd_set_privacy(struct hostapd_data *hapd, int enabled)
 {
 	if (hapd->driver == NULL || hapd->driver->set_privacy == NULL)
 		return 0;
+	/* atheros_set_privacy */
 	return hapd->driver->set_privacy(hapd->drv_priv, enabled);
 }
 
@@ -574,6 +575,7 @@ int hostapd_drv_set_key(const char *ifname, struct hostapd_data *hapd,
 {
 	if (hapd->driver == NULL || hapd->driver->set_key == NULL)
 		return 0;
+	/* atheros_set_key */
 	return hapd->driver->set_key(ifname, hapd->drv_priv, alg, addr,
 				     key_idx, set_tx, seq, seq_len, key,
 				     key_len);
