@@ -14,6 +14,11 @@
  * See README and COPYING for more details.
  */
 
+/*
+MLME: MAC sublayer management entity
+MAC子层管理实体
+*/
+
 #include "utils/includes.h"
 
 #include "utils/common.h"
@@ -172,6 +177,9 @@ void mlme_michaelmicfailure_indication(struct hostapd_data *hapd,
 }
 
 
+/*
+移除@sta的PTK
+*/
 void mlme_deletekeys_request(struct hostapd_data *hapd, struct sta_info *sta)
 {
 	hostapd_logger(hapd, sta->addr, HOSTAPD_MODULE_MLME,

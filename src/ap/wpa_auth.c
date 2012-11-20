@@ -1444,6 +1444,7 @@ void wpa_remove_ptk(struct wpa_state_machine *sm)
 	sm->PTK_valid = FALSE;
 	/* 清0 */
 	os_memset(&sm->PTK, 0, sizeof(sm->PTK));
+	/* 向驱动中设置为无加密算法，清除tk */
 	wpa_auth_set_key(sm->wpa_auth, 0, WPA_ALG_NONE, sm->addr, 0, NULL, 0);
 	sm->pairwise_set = FALSE;
 	/* 取消定时器 */

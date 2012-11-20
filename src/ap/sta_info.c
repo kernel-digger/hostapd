@@ -477,12 +477,17 @@ struct sta_info * ap_sta_add(struct hostapd_data *hapd, const u8 *addr)
 }
 
 
+/*
+关闭@sta认证端口，推进EAPOL状态机
+从驱动中移除@sta
+*/
 static int ap_sta_remove(struct hostapd_data *hapd, struct sta_info *sta)
 {
 	ieee802_1x_notify_port_enabled(sta->eapol_sm, 0);
 
 	wpa_printf(MSG_DEBUG, "Removing STA " MACSTR " from kernel driver",
 		   MAC2STR(sta->addr));
+	/* 从驱动中移除@sta */
 	if (hostapd_drv_sta_remove(hapd, sta->addr) &&
 	    sta->flags & WLAN_STA_ASSOC) {
 		wpa_printf(MSG_DEBUG, "Could not remove station " MACSTR

@@ -32,6 +32,7 @@ static struct eapol_callbacks eapol_cb;
 
 /* EAPOL state machines are described in IEEE Std 802.1X-2004, Chap. 8.2 */
 
+/* ieee802_1x_set_port_authorized */
 #define setPortAuthorized() \
 sm->eapol->cb.set_port_authorized(sm->eapol->conf.ctx, sm->sta, 1)
 #define setPortUnauthorized() \
@@ -196,12 +197,16 @@ static void eapol_port_timers_tick(void *eloop_ctx, void *timeout_ctx)
 }
 
 
+/* 认证者端口访问实体状态机
+IEEE Std 802.1X-2004, 8.2.4
+*/
 
 /* Authenticator PAE state machine */
 
 SM_STATE(AUTH_PAE, INITIALIZE)
 {
 	SM_ENTRY_MA(AUTH_PAE, INITIALIZE, auth_pae);
+	/* 设为Auto，状态受报文交互控制 */
 	sm->portMode = Auto;
 }
 
@@ -220,10 +225,13 @@ SM_STATE(AUTH_PAE, DISCONNECTED)
 	SM_ENTRY_MA(AUTH_PAE, DISCONNECTED, auth_pae);
 
 	sm->authPortStatus = Unauthorized;
+	/* ieee802_1x_set_port_authorized */
 	setPortUnauthorized();
 	sm->reAuthCount = 0;
 	sm->eapolLogoff = FALSE;
+	/* 不是从初始化跳转来，移除STA */
 	if (!from_initialize) {
+		/* _ieee802_1x_finished */
 		sm->eapol->cb.finished(sm->eapol->conf.ctx, sm->sta, 0,
 				       sm->flags & EAPOL_SM_PREAUTH);
 	}
@@ -369,6 +377,21 @@ SM_STATE(AUTH_PAE, FORCE_UNAUTH)
 }
 
 
+/*
+认证者端口访问实体状态机变迁
+
+IEEE Std 802.1X-2004, Figure 8-10-Authenticator PAE state machine
+
+E.3
+The PAE Authenticator state machines communicate with a higher layer entity, that manages EAP and AAA
+functionality. On the Authenticator, the PAE’s role is to transport EAP frames between the Supplicant and
+the Authenticator’s higher-layer entity and to control port access based on the result of the authentication
+exchange. The Authenticator state machines do this without examining the EAP header in the frame. The
+interface between the PAE Authenticator state machines and the higher layer is defined by a set of state
+machine variables: portEnabled, eapRestart, eapReq, eapNoReq, eapResp, eapSuccess, eapFail, and
+keyAvailable.
+
+*/
 SM_STEP(AUTH_PAE)
 {
 	if ((sm->portControl == Auto && sm->portMode != sm->portControl) ||
@@ -448,6 +471,7 @@ SM_STATE(BE_AUTH, INITIALIZE)
 {
 	SM_ENTRY_MA(BE_AUTH, INITIALIZE, be_auth);
 
+	/* _ieee802_1x_abort_auth */
 	abortAuth();
 	sm->eap_if->eapNoReq = FALSE;
 	sm->authAbort = FALSE;
@@ -534,6 +558,10 @@ SM_STATE(BE_AUTH, IGNORE)
 }
 
 
+/*
+IEEE Std 802.1X-2004, Figure 8-15-Backend Authentication state machine
+
+*/
 /*
 static void sm_BE_AUTH_Step(struct eapol_state_machine *sm)
 */
@@ -805,6 +833,7 @@ eapol_auth_alloc(struct eapol_authenticator *eapol, const u8 *addr,
 
 	sm->ctrl_dir_state = CTRL_DIR_IN_OR_BOTH;
 
+	/* 设为Auto，由认证者和请求者的报文交互控制 */
 	sm->portControl = Auto;
 
 	if (!eapol->conf.wpa &&
@@ -876,6 +905,9 @@ static int eapol_sm_sta_entry_alive(struct eapol_authenticator *eapol,
 }
 
 
+/*
+@sm	: 每STA的EAPOL状态机
+*/
 static void eapol_sm_step_run(struct eapol_state_machine *sm)
 {
 	struct eapol_authenticator *eapol = sm->eapol;
@@ -968,6 +1000,9 @@ static void eapol_sm_step_cb(void *eloop_ctx, void *timeout_ctx)
 }
 
 
+/*
+推进EAPOL状态机
+*/
 /**
  * eapol_auth_step - Advance EAPOL state machines
  * @sm: EAPOL state machine
@@ -983,6 +1018,9 @@ void eapol_auth_step(struct eapol_state_machine *sm)
 	 * function call chains.
 	 */
 
+	/* 放入超时定时器链表中
+	   随后调用，以免调用链路径过长
+	*/
 	eloop_register_timeout(0, 0, eapol_sm_step_cb, sm, NULL);
 }
 
@@ -993,6 +1031,7 @@ static void eapol_auth_initialize(struct eapol_state_machine *sm)
 	/* Initialize the state machines by asserting initialize and then
 	 * deasserting it after one step */
 	sm->initialize = TRUE;
+	/* 初始化各个状态机 */
 	eapol_sm_step_run(sm);
 	sm->initialize = FALSE;
 	eapol_sm_step_run(sm);

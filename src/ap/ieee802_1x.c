@@ -1451,6 +1451,9 @@ ieee802_1x_receive_auth(struct radius_msg *msg, struct radius_msg *req,
 #endif /* CONFIG_NO_RADIUS */
 
 
+/*
+取消@sta的认证进程
+*/
 void ieee802_1x_abort_auth(struct hostapd_data *hapd, struct sta_info *sta)
 {
 	struct eapol_state_machine *sm = sta->eapol_sm;
@@ -1461,6 +1464,7 @@ void ieee802_1x_abort_auth(struct hostapd_data *hapd, struct sta_info *sta)
 		       HOSTAPD_LEVEL_DEBUG, "aborting authentication");
 
 #ifndef CONFIG_NO_RADIUS
+	/* 释放最后收到的RADIUS报文 */
 	radius_msg_free(sm->last_recv_radius);
 	sm->last_recv_radius = NULL;
 #endif /* CONFIG_NO_RADIUS */
@@ -1702,6 +1706,9 @@ static void ieee802_1x_set_port_authorized(void *ctx, void *sta_ctx,
 }
 
 
+/*
+取消@sta的认证进程
+*/
 static void _ieee802_1x_abort_auth(void *ctx, void *sta_ctx)
 {
 	struct hostapd_data *hapd = ctx;
@@ -1929,6 +1936,9 @@ const u8 * ieee802_1x_get_key(struct eapol_state_machine *sm, size_t *len)
 }
 
 
+/*
+设置端口使能状态
+*/
 void ieee802_1x_notify_port_enabled(struct eapol_state_machine *sm,
 				    int enabled)
 {

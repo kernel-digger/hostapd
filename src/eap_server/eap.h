@@ -48,21 +48,56 @@ struct eap_eapol_interface {
 	/* Lower layer to full authenticator variables */
 	Boolean eapResp; /* shared with EAPOL Backend Authentication */
 	struct wpabuf *eapRespData;
+	/* portEnabled - Set by the EAPOL entity if EAPOL PDUs
+	can be transmitted and received by the PAE. */
 	Boolean portEnabled;
 	int retransWhile;
+	/* eapRestart - This variable is set to TRUE by the Authenticator state machine
+	to signal it is restarting its state machine due to an EAPOL packet,
+	a timeout, or an initialization event. */
 	Boolean eapRestart; /* shared with EAPOL Authenticator PAE */
 	int eapSRTT;
 	int eapRTTVAR;
 
 	/* Full authenticator to lower layer variables */
+	/* eapReq - This variable is set TRUE by the higher layer
+	when it has an EAP frame to be sent to the Supplicant.
+	It is set to FALSE by the Backend Authentication state machine
+	when the EAP-frame has been transmitted. */
 	Boolean eapReq; /* shared with EAPOL Backend Authentication */
+	/* eapNoReq - This variable is set TRUE by the higher layer when
+	it has no EAP frame to be sent to the Supplicant in response to
+	the last EAP frame sent by the Supplicant. */
 	Boolean eapNoReq; /* shared with EAPOL Backend Authentication */
+	/* eapSuccess - The eapSuccess signal is set by the higher layer to indicate that
+	the EAP authentication exchange has completed with a successful outcome.
+	This will cause the PAE state machine to initiate other processing that may
+	result in entering the authenticated state.
+	The higher layer should set this signal in conjunction with the eapNoResp signal.
+	This signal is reset by the higher layer during its initialization of state. */
 	Boolean eapSuccess;
+	/* eapFail - This signal is set by the higher layer to indicate that
+	the EAP authentication exchange has completed with an unsuccessful outcome.
+	This will cause the PAE state machine to initiate other processing that
+	will result in entering the held state.
+	The higher layer should set this signal in conjunction with the eapNoResp signal.
+	This signal is reset by the higher layer during its initialization of state. */
 	Boolean eapFail;
+	/* eapTimeout - The higher layer should set this signal to indicate that
+	it has waited too long to receive a new EAP Request from the Authentication Server.
+	The PAE Authenticator state machine will begin the process of aborting the
+	current authentication exchange and will restart a new authentication.
+	The higher layer should reset this signal whenever it is initialized. */
 	Boolean eapTimeout;
 	struct wpabuf *eapReqData;
 	u8 *eapKeyData;
 	size_t eapKeyDataLen;
+	/* keyAvailable - The higher layer should set this signal when
+	the Authentication Server has made available any keying material necessary
+	to generate an EAPOL-Key message.
+	Once this signal is set the PAE key transmit machine will gather the key material
+	and begin the process of making the link secure.
+	The PAE key transmit machine will reset this signal once the link has been made secure. */
 	Boolean eapKeyAvailable; /* called keyAvailable in IEEE 802.1X-2004 */
 
 	/* AAA interface to full authenticator variables */
