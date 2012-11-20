@@ -120,7 +120,13 @@ struct eapol_state_machine {
 	*/
 	PortTypes portControl;
 	Boolean portValid;
-	/* reAuthenticate - */
+	/* reAuthenticate - This variable is set TRUE by the Reauthentication Timer state machine
+	on expiry of the reAuthWhen timer. This variable may also be set TRUE by management action.
+	It is set FALSE by the operation of the Authenticator PAE state machine.
+	Reauthentication may not begin immediately.
+	The Authenticator does not interrupt the current authentication,
+	but instead waits for it to complete before beginning a new authentication.
+	Only one pending reauthentication will be tracked. */
 	Boolean reAuthenticate;
 
 	/* Port Timers state machine */

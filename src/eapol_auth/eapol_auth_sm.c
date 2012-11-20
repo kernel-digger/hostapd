@@ -255,6 +255,13 @@ SM_STATE(AUTH_PAE, RESTART)
 }
 
 
+/*
+可由RESTART状态转移过来
+
+reAuthenticate = FALSE;
+inc(reAuthCount);
+
+*/
 SM_STATE(AUTH_PAE, CONNECTING)
 {
 	if (sm->auth_pae_state != AUTH_PAE_CONNECTING)
@@ -263,6 +270,7 @@ SM_STATE(AUTH_PAE, CONNECTING)
 	SM_ENTRY_MA(AUTH_PAE, CONNECTING, auth_pae);
 
 	sm->reAuthenticate = FALSE;
+	/* 进入CONNECTING的次数 */
 	sm->reAuthCount++;
 }
 
@@ -320,6 +328,9 @@ SM_STATE(AUTH_PAE, AUTHENTICATED)
 }
 
 
+/*
+由CONNECTING状态迁移过来
+*/
 SM_STATE(AUTH_PAE, AUTHENTICATING)
 {
 	SM_ENTRY_MA(AUTH_PAE, AUTHENTICATING, auth_pae);
@@ -422,8 +433,15 @@ SM_STEP(AUTH_PAE)
 				SM_ENTER(AUTH_PAE, RESTART);
 			break;
 		case AUTH_PAE_CONNECTING:
+			/* 收到请求者的EAPOL-Logoff报文
+			   达到次数上限
+			*/
 			if (sm->eapolLogoff || sm->reAuthCount > sm->reAuthMax)
 				SM_ENTER(AUTH_PAE, DISCONNECTED);
+			/* AAA有EAP报文发送并且未达到次数上限
+			   AAA认证通过
+			   AAA认证失败
+			*/
 			else if ((sm->eap_if->eapReq &&
 				  sm->reAuthCount <= sm->reAuthMax) ||
 				 sm->eap_if->eapSuccess || sm->eap_if->eapFail)
