@@ -132,6 +132,9 @@ struct wpa_state_machine {
 	u8 req_replay_counter[WPA_REPLAY_COUNTER_LEN];
 	int req_replay_counter_used;
 
+	/* 下面几个字段在wpa_validate_wpa_ie中保存 */
+
+	/* 记录STA的IE信息 */
 	u8 *wpa_ie;
 	size_t wpa_ie_len;
 

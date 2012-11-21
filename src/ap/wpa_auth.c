@@ -2265,6 +2265,7 @@ SM_STEP(WPA_PTK)
 	/* 由wpa_auth_sta_associated中切换过来 */
 	else if (sm->AuthenticationRequest)
 		SM_ENTER(WPA_PTK, AUTHENTICATION);
+	/* 收到EAPOL-Start报文 */
 	else if (sm->ReAuthenticationRequest)
 		SM_ENTER(WPA_PTK, AUTHENTICATION2);
 	else if (sm->PTKRequest)

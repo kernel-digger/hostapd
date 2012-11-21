@@ -32,7 +32,11 @@ struct ieee802_1x_hdr {
 #pragma pack(pop)
 #endif /* _MSC_VER */
 
+/* IEEE Std 802.1X-2004, 7.5.3 Protocol version */
+
 #define EAPOL_VERSION 2
+
+/* IEEE Std 802.1X-2004, 7.5.4 Packet type */
 
 enum { IEEE802_1X_TYPE_EAP_PACKET = 0,
        IEEE802_1X_TYPE_EAPOL_START = 1,

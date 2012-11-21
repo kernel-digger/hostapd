@@ -680,15 +680,18 @@ void ieee802_1x_receive(struct hostapd_data *hapd, const u8 *sa, const u8 *buf,
 	struct rsn_pmksa_cache_entry *pmksa;
 	int key_mgmt;
 
-	/* 该bss没有配置8021x认证 */
+	/* 该bss没有配置8021x认证，也没有开启WPA，也没有WPS
+	   则不处理EAPOL报文
+	*/
 	if (!hapd->conf->ieee802_1x && !hapd->conf->wpa &&
 	    !hapd->conf->wps_state)
 		return;
 
 	wpa_printf(MSG_DEBUG, "IEEE 802.1X: %lu bytes from " MACSTR,
 		   (unsigned long) len, MAC2STR(sa));
+	/* 根据源MAC取STA的描述符sta_info */
 	sta = ap_get_sta(hapd, sa);
-	/* STA未关联 */
+	/* 没有该sta，或STA未关联 */
 	if (!sta || (!(sta->flags & (WLAN_STA_ASSOC | WLAN_STA_PREAUTH)) &&
 		     !(hapd->iface->drv_flags & WPA_DRIVER_FLAGS_WIRED))) {
 		wpa_printf(MSG_DEBUG, "IEEE 802.1X data frame from not "
@@ -724,7 +727,7 @@ void ieee802_1x_receive(struct hostapd_data *hapd, const u8 *sa, const u8 *buf,
 		sta->eapol_sm->dot1xAuthEapolFramesRx++;
 	}
 
-	/* 判断是否为EAPOL-KEY报文 */
+	/* 判断是否为EAPOL-Key报文 */
 	key = (struct ieee802_1x_eapol_key *) (hdr + 1);
 	if (datalen >= sizeof(struct ieee802_1x_eapol_key) &&
 	    hdr->type == IEEE802_1X_TYPE_EAPOL_KEY &&
@@ -735,6 +738,9 @@ void ieee802_1x_receive(struct hostapd_data *hapd, const u8 *sa, const u8 *buf,
 		return;
 	}
 
+	/* 该bss没有配置8021x认证，也没有开启WPS
+	   则不处理EAPOL报文(非EAPOL-Key)
+	*/
 	if (!hapd->conf->ieee802_1x &&
 	    !(sta->flags & (WLAN_STA_WPS | WLAN_STA_MAYBE_WPS))) {
 		wpa_printf(MSG_DEBUG, "IEEE 802.1X: Ignore EAPOL message - "
@@ -742,6 +748,7 @@ void ieee802_1x_receive(struct hostapd_data *hapd, const u8 *sa, const u8 *buf,
 		return;
 	}
 
+	/* 若该sta使用的是预共享密钥方式，则不处理该EAPOL报文 */
 	key_mgmt = wpa_auth_sta_key_mgmt(sta->wpa_sm);
 	if (key_mgmt != -1 && wpa_key_mgmt_wpa_psk(key_mgmt)) {
 		wpa_printf(MSG_DEBUG, "IEEE 802.1X: Ignore EAPOL message - "
@@ -749,6 +756,9 @@ void ieee802_1x_receive(struct hostapd_data *hapd, const u8 *sa, const u8 *buf,
 		return;
 	}
 
+	/* 若未创建EAPOL状态机，则创建
+	   正常在hostapd_new_assoc_sta => ieee802_1x_new_station中已创建
+	*/
 	if (!sta->eapol_sm) {
 		sta->eapol_sm = ieee802_1x_alloc_eapol_sm(hapd, sta);
 		if (!sta->eapol_sm)
@@ -776,6 +786,7 @@ void ieee802_1x_receive(struct hostapd_data *hapd, const u8 *sa, const u8 *buf,
 		}
 #endif /* CONFIG_WPS */
 
+		/* 标记PAE可以收发EAPOL报文 */
 		sta->eapol_sm->eap_if->portEnabled = TRUE;
 	}
 
@@ -795,6 +806,7 @@ void ieee802_1x_receive(struct hostapd_data *hapd, const u8 *sa, const u8 *buf,
 		hostapd_logger(hapd, sta->addr, HOSTAPD_MODULE_IEEE8021X,
 			       HOSTAPD_LEVEL_DEBUG, "received EAPOL-Start "
 			       "from STA");
+		/* 去掉等待EAPOL-Start报文的标记 */
 		sta->eapol_sm->flags &= ~EAPOL_SM_WAIT_START;
 		pmksa = wpa_auth_sta_get_pmksa(sta->wpa_sm);
 		if (pmksa) {
@@ -804,7 +816,9 @@ void ieee802_1x_receive(struct hostapd_data *hapd, const u8 *sa, const u8 *buf,
 				       "STA sent EAPOL-Start");
 			wpa_auth_sta_clear_pmksa(sta->wpa_sm, pmksa);
 		}
+		/* 收到EAPOL-Start */
 		sta->eapol_sm->eapolStart = TRUE;
+		/* 统计 */
 		sta->eapol_sm->dot1xAuthEapolStartFramesRx++;
 		eap_server_clear_identity(sta->eapol_sm->eap);
 		wpa_auth_sm_event(sta->wpa_sm, WPA_REAUTH_EAPOL);
@@ -927,6 +941,7 @@ void ieee802_1x_new_station(struct hostapd_data *hapd, struct sta_info *sta)
 	}
 #endif /* CONFIG_WPS */
 
+	/* 标记PAE可以收发EAPOL报文 */
 	sta->eapol_sm->eap_if->portEnabled = TRUE;
 
 #ifdef CONFIG_IEEE80211R

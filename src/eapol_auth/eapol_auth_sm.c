@@ -339,6 +339,7 @@ SM_STATE(AUTH_PAE, AUTHENTICATING)
 	sm->authSuccess = FALSE;
 	sm->authFail = FALSE;
 	sm->authTimeout = FALSE;
+	/* 通知BE_AUTH */
 	sm->authStart = TRUE;
 	sm->keyRun = FALSE;
 	sm->keyDone = FALSE;
@@ -459,6 +460,7 @@ SM_STEP(AUTH_PAE)
 			else if (sm->authFail ||
 				 (sm->keyDone && !sm->portValid))
 				SM_ENTER(AUTH_PAE, HELD);
+			/* 收到请求者的EAPOL-Start，或EAPOL-Logoff，或请求者响应报文超时 */
 			else if (sm->eapolStart || sm->eapolLogoff ||
 				 sm->authTimeout)
 				SM_ENTER(AUTH_PAE, ABORTING);
@@ -1006,6 +1008,7 @@ restart:
 	}
 
 	if (eapol_sm_sta_entry_alive(eapol, addr))
+		/* ieee802_1x_eapol_event */
 		sm->eapol->cb.eapol_event(sm->eapol->conf.ctx, sm->sta,
 					  EAPOL_AUTH_SM_CHANGE);
 }
