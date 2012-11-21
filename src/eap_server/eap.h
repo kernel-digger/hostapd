@@ -89,6 +89,8 @@ struct eap_eapol_interface {
 	current authentication exchange and will restart a new authentication.
 	The higher layer should reset this signal whenever it is initialized. */
 	Boolean eapTimeout;
+	/* SM_STATE(EAP, METHOD_REQUEST)中构造的EAP-Request报文
+	准备封装进EAPOL报文发送给STA */
 	struct wpabuf *eapReqData;
 	u8 *eapKeyData;
 	size_t eapKeyDataLen;

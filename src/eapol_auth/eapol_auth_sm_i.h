@@ -31,6 +31,7 @@ typedef unsigned int Counter;
  * struct eapol_authenticator - Global EAPOL authenticator data
  */
 struct eapol_authenticator {
+	/* 配置来自hostapd_bss_config */
 	struct eapol_auth_config conf;
 	/* ieee802_1x_init => eapol_auth_init中设置回调函数 */
 	struct eapol_auth_cb cb;
@@ -119,6 +120,9 @@ struct eapol_state_machine {
 		outcome of an authentication exchange between the Supplicant and the Authentication Server.
 	*/
 	PortTypes portControl;
+	/* 与keyDone配合使用
+	   指示安全通道已经建立
+	*/
 	Boolean portValid;
 	/* reAuthenticate - This variable is set TRUE by the Reauthentication Timer state machine
 	on expiry of the reAuthWhen timer. This variable may also be set TRUE by management action.
@@ -182,6 +186,14 @@ struct eapol_state_machine {
 	       BE_AUTH_IGNORE
 	} be_auth_state;
 	/* constants */
+	/* serverTimeout - The initialization value used for the aWhile timer
+	when timing out the higher layer.
+	This timer should be longer than the longest time that
+	the higher layer would take to exhaust all of its retries to the Authentication Server
+	with its current timeout period. The aWhile timer has a default value of 30 s;
+	however, the timeout value may be adjusted to take into account EAP/AAA settings.
+	It can be set by management to any value in the range from 1 to X s,
+	where X is an implementation dependent value. */
 	unsigned int serverTimeout; /* default 30; 1..X */
 #define BE_AUTH_DEFAULT_serverTimeout 30
 	/* counters */
@@ -235,8 +247,10 @@ struct eapol_state_machine {
 	struct eap_eapol_interface *eap_if;
 
 	int radius_identifier;
+	/* 记录RADIUS服务器发来的报文 */
 	/* TODO: check when the last messages can be released */
 	struct radius_msg *last_recv_radius;
+	/* 记录最后发送的EAP-Request报文头中的identifier */
 	u8 last_eap_id; /* last used EAP Identifier */
 	u8 *identity;
 	size_t identity_len;

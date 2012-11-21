@@ -21,9 +21,17 @@
 #pragma pack(push, 1)
 #endif /* _MSC_VER */
 
+/* IEEE Std 802.1X-2004, 7.7 EAP packet format-informative */
+
+/* EAP报文格式头 */
 struct eap_hdr {
+	/* EAP报文类型
+		1: Request, 2: Response, 3: Success, 4: Failure
+	*/
 	u8 code;
+	/* 标识符，用于匹配Request和Response */
 	u8 identifier;
+	/* EAP报文的长度(包含头部4个字节) */
 	be16 length; /* including code and identifier; network byte order */
 	/* followed by length-4 octets of data */
 } STRUCT_PACKED;

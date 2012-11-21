@@ -41,8 +41,10 @@ sm->eapol->cb.set_port_authorized(sm->eapol->conf.ctx, sm->sta, 0)
 /* procedures */
 #define txCannedFail() eapol_auth_tx_canned_eap(sm, 0)
 #define txCannedSuccess() eapol_auth_tx_canned_eap(sm, 1)
+/* 将EAP-Request报文封装进EAPOL报文发送给STA */
 #define txReq() eapol_auth_tx_req(sm)
 #define abortAuth() sm->eapol->cb.abort_auth(sm->eapol->conf.ctx, sm->sta)
+/* _ieee802_1x_tx_key */
 #define txKey() sm->eapol->cb.tx_key(sm->eapol->conf.ctx, sm->sta)
 #define processKey() do { } while (0)
 
@@ -109,8 +111,14 @@ static void eapol_auth_tx_canned_eap(struct eapol_state_machine *sm,
 }
 
 
+/*
+将EAP-Request报文封装为EAP-Packet发送
+*/
 static void eapol_auth_tx_req(struct eapol_state_machine *sm)
 {
+	/* 没有EAP-Request要发送
+	   || 检查EAP-Request长度有效性
+	*/
 	if (sm->eap_if->eapReqData == NULL ||
 	    wpabuf_len(sm->eap_if->eapReqData) < sizeof(struct eap_hdr)) {
 		eapol_auth_logger(sm->eapol, sm->addr,
@@ -120,17 +128,21 @@ static void eapol_auth_tx_req(struct eapol_state_machine *sm)
 		return;
 	}
 
+	/* 状态机处于等待EAPOL-Start报文状态 */
 	if (sm->flags & EAPOL_SM_WAIT_START) {
 		wpa_printf(MSG_DEBUG, "EAPOL: Drop EAPOL TX to " MACSTR
 			   " while waiting for EAPOL-Start",
 			   MAC2STR(sm->addr));
+		/* 返回，不发送EAPOL报文給STA */
 		return;
 	}
 
+	/* 记录EAP-Request报文的identifier */
 	sm->last_eap_id = eap_get_id(sm->eap_if->eapReqData);
 	eapol_auth_vlogger(sm->eapol, sm->addr, EAPOL_LOGGER_DEBUG,
 			   "Sending EAP Packet (identifier %d)",
 			   sm->last_eap_id);
+	/* ieee802_1x_eapol_send */
 	sm->eapol->cb.eapol_send(sm->eapol->conf.ctx, sm->sta,
 				 IEEE802_1X_TYPE_EAP_PACKET,
 				 wpabuf_head(sm->eap_if->eapReqData),
@@ -339,7 +351,7 @@ SM_STATE(AUTH_PAE, AUTHENTICATING)
 	sm->authSuccess = FALSE;
 	sm->authFail = FALSE;
 	sm->authTimeout = FALSE;
-	/* 通知BE_AUTH */
+	/* 通知BE_AUTH可以继续运行 */
 	sm->authStart = TRUE;
 	sm->keyRun = FALSE;
 	sm->keyDone = FALSE;
@@ -406,6 +418,10 @@ keyAvailable.
 */
 SM_STEP(AUTH_PAE)
 {
+	/* PAE端口不是受报文控制
+	   || 状态机还处于初始化状态
+	   || PAE端口还不能收发EAPOL报文
+	*/
 	if ((sm->portControl == Auto && sm->portMode != sm->portControl) ||
 	    sm->initialize || !sm->eap_if->portEnabled)
 		SM_ENTER_GLOBAL(AUTH_PAE, INITIALIZE);
@@ -502,7 +518,9 @@ SM_STATE(BE_AUTH, REQUEST)
 {
 	SM_ENTRY_MA(BE_AUTH, REQUEST, be_auth);
 
+	/* 发送EAP-Request */
 	txReq();
+	/* 已发送，标记无EAP-Request报文需要发送 */
 	sm->eap_if->eapReq = FALSE;
 	sm->backendOtherRequestsToSupplicant++;
 
@@ -566,6 +584,7 @@ SM_STATE(BE_AUTH, IDLE)
 {
 	SM_ENTRY_MA(BE_AUTH, IDLE, be_auth);
 
+	/* 标记停止BE_AUTH状态机 */
 	sm->authStart = FALSE;
 }
 
@@ -587,7 +606,12 @@ static void sm_BE_AUTH_Step(struct eapol_state_machine *sm)
 */
 SM_STEP(BE_AUTH)
 {
+	/* PAE端口不是受报文控制
+	   || 状态机还处于初始化状态
+	   || AUTH_PAE通知BE_AUTH终止认证流程
+	*/
 	if (sm->portControl != Auto || sm->initialize || sm->authAbort) {
+		/* 初始化BE_AUTH */
 		SM_ENTER_GLOBAL(BE_AUTH, INITIALIZE);
 		return;
 	}
@@ -599,6 +623,7 @@ SM_STEP(BE_AUTH)
 	case BE_AUTH_REQUEST:
 		if (sm->eapolEap)
 			SM_ENTER(BE_AUTH, RESPONSE);
+		/* 有EAP-Request报文需要发送给STA */
 		else if (sm->eap_if->eapReq)
 			SM_ENTER(BE_AUTH, REQUEST);
 		else if (sm->eap_if->eapTimeout)
@@ -835,6 +860,10 @@ eapol_auth_alloc(struct eapol_authenticator *eapol, const u8 *addr,
 	sm->eapol = eapol;
 	sm->sta = sta_ctx;
 
+	/* 设置各个状态机默认状态
+	   在下面eapol_auth_initialize中初始化的时候
+	   eapol_sm_step_run中第一次进入时各个状态不变，不会restart
+	*/
 	/* Set default values for state machine constants */
 	sm->auth_pae_state = AUTH_PAE_INITIALIZE;
 	sm->quietPeriod = AUTH_PAE_DEFAULT_quietPeriod;
@@ -856,16 +885,19 @@ eapol_auth_alloc(struct eapol_authenticator *eapol, const u8 *addr,
 	/* 设为Auto，由认证者和请求者的报文交互控制 */
 	sm->portControl = Auto;
 
+	/*未启用WPA，并且WEP已经配置 */
 	if (!eapol->conf.wpa &&
 	    (eapol->default_wep_key || eapol->conf.individual_wep_key_len > 0))
 		sm->keyTxEnabled = TRUE;
 	else
 		sm->keyTxEnabled = FALSE;
+	/* 启用了WPA */
 	if (eapol->conf.wpa)
 		sm->portValid = FALSE;
 	else
 		sm->portValid = TRUE;
 
+	/* 从EAPOL认证者中提取EAP服务器相关配置 */
 	os_memset(&eap_conf, 0, sizeof(eap_conf));
 	eap_conf.eap_server = eapol->conf.eap_server;
 	eap_conf.ssl_ctx = eapol->conf.ssl_ctx;
@@ -887,6 +919,7 @@ eapol_auth_alloc(struct eapol_authenticator *eapol, const u8 *addr,
 	eap_conf.fragment_size = eapol->conf.fragment_size;
 	eap_conf.pwd_group = eapol->conf.pwd_group;
 	eap_conf.pbc_in_m1 = eapol->conf.pbc_in_m1;
+	/* 初始化EAP服务器状态机 */
 	sm->eap = eap_server_sm_init(sm, &eapol_cb, &eap_conf);
 	if (sm->eap == NULL) {
 		eapol_auth_free(sm);
@@ -1007,6 +1040,7 @@ restart:
 		}
 	}
 
+	/* EAPOL认证状态机发生变化，通过定时器启动WPA认证状态机 */
 	if (eapol_sm_sta_entry_alive(eapol, addr))
 		/* ieee802_1x_eapol_event */
 		sm->eapol->cb.eapol_event(sm->eapol->conf.ctx, sm->sta,

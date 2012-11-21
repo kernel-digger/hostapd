@@ -141,6 +141,9 @@ static inline int hostapd_drv_sta_remove(struct hostapd_data *hapd,
 	return hapd->driver->sta_remove(hapd->drv_priv, addr);
 }
 
+/*
+·¢ËÍEAPOL±¨ÎÄ
+*/
 static inline int hostapd_drv_hapd_send_eapol(struct hostapd_data *hapd,
 					      const u8 *addr, const u8 *data,
 					      size_t data_len, int encrypt,

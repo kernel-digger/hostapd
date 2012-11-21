@@ -206,6 +206,11 @@ void wpabuf_free(struct wpabuf *buf)
 }
 
 
+/*
+增加@buf中used的长度
+
+@return	: @buf中可以放入数据的指针位置
+*/
 void * wpabuf_put(struct wpabuf *buf, size_t len)
 {
 	void *tmp = wpabuf_mhead_u8(buf) + wpabuf_len(buf);

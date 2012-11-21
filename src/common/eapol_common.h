@@ -21,9 +21,17 @@
 #pragma pack(push, 1)
 #endif /* _MSC_VER */
 
+/* IEEE Std 802.1X-2004, EAPOL MPDU format for use with IEEE 802.3/Ethernet */
+
+/* EAPOL报文头 */
 struct ieee802_1x_hdr {
+	/* 版本号2 */
 	u8 version;
+	/* EAPOL报文类型
+		0: EAP-Packet, 1: EAPOL-Start, 2: EAPOL-Logoff, 3: EAPOL-Key,
+		4: EAPOL-Encapsulated-ASF-Alert */
 	u8 type;
+	/* 后面数据的长度(不包含该头) */
 	be16 length;
 	/* followed by length octets of data */
 } STRUCT_PACKED;

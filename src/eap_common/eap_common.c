@@ -88,6 +88,9 @@ const u8 * eap_hdr_validate(int vendor, EapType eap_type,
 }
 
 
+/*
+分配一个wpabuf来放置EAP报文
+*/
 /**
  * eap_msg_alloc - Allocate a buffer for an EAP message
  * @vendor: Vendor-Id (0 = IETF)
@@ -111,17 +114,20 @@ struct wpabuf * eap_msg_alloc(int vendor, EapType type, size_t payload_len,
 	struct eap_hdr *hdr;
 	size_t len;
 
+	/* 分配空间 */
 	len = sizeof(struct eap_hdr) + (vendor == EAP_VENDOR_IETF ? 1 : 8) +
 		payload_len;
 	buf = wpabuf_alloc(len);
 	if (buf == NULL)
 		return NULL;
 
+	/* 设置EAP报文头 */
 	hdr = wpabuf_put(buf, sizeof(*hdr));
 	hdr->code = code;
 	hdr->identifier = identifier;
 	hdr->length = host_to_be16(len);
 
+	/* 放置使用的EapType */
 	if (vendor == EAP_VENDOR_IETF) {
 		wpabuf_put_u8(buf, type);
 	} else {

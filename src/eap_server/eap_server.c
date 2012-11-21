@@ -259,10 +259,13 @@ SM_STATE(EAP, SEND_REQUEST)
 	SM_ENTRY(EAP, SEND_REQUEST);
 
 	sm->retransCount = 0;
+	/* 有EAP-Request报文需要发送给STA */
 	if (sm->eap_if.eapReqData) {
+		/* 复制数据，用lastReqData记录 */
 		if (eap_copy_buf(&sm->lastReqData, sm->eap_if.eapReqData) == 0)
 		{
 			sm->eap_if.eapResp = FALSE;
+			/* 标记有EAP-Request报文需要发送 */
 			sm->eap_if.eapReq = TRUE;
 		} else {
 			sm->eap_if.eapResp = FALSE;
@@ -297,11 +300,18 @@ SM_STATE(EAP, METHOD_REQUEST)
 		return;
 	}
 
+	/* 取一个identifier */
 	sm->currentId = eap_sm_nextId(sm, sm->currentId);
 	wpa_printf(MSG_DEBUG, "EAP: building EAP-Request: Identifier %d",
 		   sm->currentId);
 	sm->lastId = sm->currentId;
 	wpabuf_free(sm->eap_if.eapReqData);
+	/* 构造EAP-Request报文
+		eap_identity_buildReq
+		eap_tls_buildReq
+		eap_peap_buildReq
+		eap_md5_buildReq
+	*/
 	sm->eap_if.eapReqData = sm->m->buildReq(sm, sm->eap_method_priv,
 						sm->currentId);
 	if (sm->m->getTimeout)
@@ -871,6 +881,9 @@ static int eap_sm_calculateTimeout(struct eap_sm *sm, int retransCount,
 }
 
 
+/*
+解析从STA收取到的EAP报文
+*/
 static void eap_sm_parseEapResp(struct eap_sm *sm, const struct wpabuf *resp)
 {
 	const struct eap_hdr *hdr;
@@ -905,8 +918,10 @@ static void eap_sm_parseEapResp(struct eap_sm *sm, const struct wpabuf *resp)
 	if (hdr->code == EAP_CODE_RESPONSE)
 		sm->rxResp = TRUE;
 
+	/* EAP头后有数据 */
 	if (plen > sizeof(*hdr)) {
 		u8 *pos = (u8 *) (hdr + 1);
+		/* EapType值 */
 		sm->respMethod = *pos++;
 		if (sm->respMethod == EAP_TYPE_EXPANDED) {
 			if (plen < sizeof(*hdr) + 8) {
@@ -977,6 +992,9 @@ static struct wpabuf * eap_sm_buildFailure(struct eap_sm *sm, u8 id)
 }
 
 
+/*
+生成下一个identifier
+*/
 static int eap_sm_nextId(struct eap_sm *sm, int id)
 {
 	if (id < 0) {

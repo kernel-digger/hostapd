@@ -55,6 +55,9 @@ static void eap_identity_reset(struct eap_sm *sm, void *priv)
 }
 
 
+/*
+构造EAP-Request/Identity报文
+*/
 static struct wpabuf * eap_identity_buildReq(struct eap_sm *sm, void *priv,
 					     u8 id)
 {

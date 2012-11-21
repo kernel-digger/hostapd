@@ -126,11 +126,13 @@ struct eap_sm {
 		METHOD_PROPOSED, METHOD_CONTINUE, METHOD_END
 	} methodState;
 	int retransCount;
+	/* 记录最后一个发送的EAP-Request报文 */
 	struct wpabuf *lastReqData;
 	int methodTimeout;
 
 	/* Short-term (not maintained between packets) */
 	Boolean rxResp;
+	/* 收取到的EAP-Response报文头中的identifier */
 	int respId;
 	EapType respMethod;
 	int respVendor;

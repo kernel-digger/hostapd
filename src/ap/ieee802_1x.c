@@ -43,6 +43,9 @@ static void ieee802_1x_finished(struct hostapd_data *hapd,
 				struct sta_info *sta, int success);
 
 
+/*
+将@data封装进EAPOL报文并发送
+*/
 static void ieee802_1x_send(struct hostapd_data *hapd, struct sta_info *sta,
 			    u8 type, const u8 *data, size_t datalen)
 {
@@ -51,6 +54,7 @@ static void ieee802_1x_send(struct hostapd_data *hapd, struct sta_info *sta,
 	size_t len;
 	int encrypt = 0;
 
+	/* 分配EAPOL报文空间 */
 	len = sizeof(*xhdr) + datalen;
 	buf = os_zalloc(len);
 	if (buf == NULL) {
@@ -60,16 +64,22 @@ static void ieee802_1x_send(struct hostapd_data *hapd, struct sta_info *sta,
 		return;
 	}
 
+	/* 设置EAPOL报文头 */
 	xhdr = (struct ieee802_1x_hdr *) buf;
+	/* 版本号 */
 	xhdr->version = hapd->conf->eapol_version;
+	/* EAP报文类型 */
 	xhdr->type = type;
+	/* 数据长度 */
 	xhdr->length = host_to_be16(datalen);
 
+	/* 复制数据 */
 	if (datalen > 0 && data != NULL)
 		os_memcpy(xhdr + 1, data, datalen);
 
 	if (wpa_auth_pairwise_set(sta->wpa_sm))
 		encrypt = 1;
+	/* 发送EAPOL报文 */
 	if (sta->flags & WLAN_STA_PREAUTH) {
 		rsn_preauth_send(hapd, sta, buf, len);
 	} else {
@@ -416,6 +426,10 @@ static void ieee802_1x_learn_identity(struct hostapd_data *hapd,
 }
 
 
+/*
+把@eap消息封装进RADIUS报文
+并发送给RADIUS认证服务器
+*/
 static void ieee802_1x_encapsulate_radius(struct hostapd_data *hapd,
 					  struct sta_info *sta,
 					  const u8 *eap, size_t len)
@@ -1612,6 +1626,10 @@ static void ieee802_1x_eapol_send(void *ctx, void *sta_ctx, u8 type,
 }
 
 
+/*
+把@eap消息封装进RADIUS报文
+并发送给RADIUS认证服务器
+*/
 static void ieee802_1x_aaa_send(void *ctx, void *sta_ctx,
 				const u8 *data, size_t datalen)
 {
@@ -1765,6 +1783,7 @@ int ieee802_1x_init(struct hostapd_data *hapd)
 	struct eapol_auth_config conf;
 	struct eapol_auth_cb cb;
 
+	/* 从hostapd_bss_config中提取EAPOL认证者配置 */
 	os_memset(&conf, 0, sizeof(conf));
 	conf.ctx = hapd;
 	conf.eap_reauth_period = hapd->conf->eap_reauth_period;
@@ -1790,6 +1809,7 @@ int ieee802_1x_init(struct hostapd_data *hapd)
 	conf.pwd_group = hapd->conf->pwd_group;
 	conf.pbc_in_m1 = hapd->conf->pbc_in_m1;
 
+	/* 设置EAPOL认证者回调函数  */
 	os_memset(&cb, 0, sizeof(cb));
 	cb.eapol_send = ieee802_1x_eapol_send;
 	cb.aaa_send = ieee802_1x_aaa_send;
