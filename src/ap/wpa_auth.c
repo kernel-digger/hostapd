@@ -1496,15 +1496,19 @@ int wpa_auth_sm_event(struct wpa_state_machine *sm, wpa_event event)
 			sm->AuthenticationRequest = TRUE;
 			break;
 		}
+		/* 组播密钥需要更新 */
 		if (sm->GUpdateStationKeys) {
 			/*
 			 * Reauthentication cancels the pending group key
 			 * update for this STA.
 			 */
+			/* 组中需要更新组播密钥的STA数量减1 */
 			sm->group->GKeyDoneStations--;
 			sm->GUpdateStationKeys = FALSE;
+			/* 重新初始化组播密钥 */
 			sm->PtkGroupInit = TRUE;
 		}
+		/* 重认证请求 */
 		sm->ReAuthenticationRequest = TRUE;
 		break;
 	case WPA_ASSOC_FT:

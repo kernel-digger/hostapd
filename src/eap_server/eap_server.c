@@ -152,6 +152,7 @@ SM_STATE(EAP, INITIALIZE)
 	sm->eap_if.eapKeyData = NULL;
 	sm->eap_if.eapKeyDataLen = 0;
 	sm->eap_if.eapKeyAvailable = FALSE;
+	/* 重启EAP状态机完成 */
 	sm->eap_if.eapRestart = FALSE;
 
 	/*
@@ -284,6 +285,11 @@ SM_STATE(EAP, INTEGRITY_CHECK)
 {
 	SM_ENTRY(EAP, INTEGRITY_CHECK);
 
+	/* eap_identity_check
+		eap_tls_check
+		eap_peap_check
+		eap_md5_check
+	*/
 	if (sm->m->check) {
 		sm->ignore = sm->m->check(sm, sm->eap_method_priv,
 					  sm->eap_if.eapRespData);
@@ -333,7 +339,9 @@ SM_STATE(EAP, METHOD_RESPONSE)
 	*/
 	sm->m->process(sm, sm->eap_method_priv, sm->eap_if.eapRespData);
 	/* eap_identity_isDone
-
+		eap_tls_isDone
+		eap_peap_isDone
+		eap_md5_isDone
 	*/
 	if (sm->m->isDone(sm, sm->eap_method_priv)) {
 		eap_sm_Policy_update(sm, NULL, 0);
@@ -346,6 +354,7 @@ SM_STATE(EAP, METHOD_RESPONSE)
 			sm->eap_if.eapKeyData = NULL;
 			sm->eap_if.eapKeyDataLen = 0;
 		}
+		/* EAP方法一个回合结束 */
 		sm->methodState = METHOD_END;
 	} else {
 		sm->methodState = METHOD_CONTINUE;
@@ -361,17 +370,25 @@ SM_STATE(EAP, PROPOSE_METHOD)
 	SM_ENTRY(EAP, PROPOSE_METHOD);
 
 	type = eap_sm_Policy_getNextMethod(sm, &vendor);
+	/* EAP_TYPE_IDENTITY EAP_TYPE_NONE */
 	if (vendor == EAP_VENDOR_IETF)
 		sm->currentMethod = type;
 	else
 		sm->currentMethod = EAP_TYPE_EXPANDED;
+	/* 已有EAP方法 && 有EAP方法私有数据 */
 	if (sm->m && sm->eap_method_priv) {
+		/* 重置EAP方法 */
 		sm->m->reset(sm, sm->eap_method_priv);
 		sm->eap_method_priv = NULL;
 	}
 	/* 根据EapType选择要使用的方法 */
 	sm->m = eap_server_get_eap_method(vendor, type);
 	if (sm->m) {
+		/* eap_identity_init
+			eap_tls_init
+			eap_peap_init
+			eap_md5_init
+		*/
 		sm->eap_method_priv = sm->m->init(sm);
 		if (sm->eap_method_priv == NULL) {
 			wpa_printf(MSG_DEBUG, "EAP: Failed to initialize EAP "
@@ -475,6 +492,7 @@ SM_STATE(EAP, INITIALIZE_PASSTHROUGH)
 {
 	SM_ENTRY(EAP, INITIALIZE_PASSTHROUGH);
 
+	/* 释放aaaEapRespData */
 	wpabuf_free(sm->eap_if.aaaEapRespData);
 	sm->eap_if.aaaEapRespData = NULL;
 }
@@ -634,7 +652,9 @@ SM_STATE(EAP, SUCCESS2)
 
 SM_STEP(EAP)
 {
+	/* 重启EAP状态机 && PAE端口允许收发EAPOL报文 */
 	if (sm->eap_if.eapRestart && sm->eap_if.portEnabled)
+		/* 初始化EAP状态机 */
 		SM_ENTER_GLOBAL(EAP, INITIALIZE);
 	else if (!sm->eap_if.portEnabled)
 		SM_ENTER_GLOBAL(EAP, DISABLED);
@@ -674,9 +694,11 @@ SM_STEP(EAP)
 		if (sm->eap_if.portEnabled)
 			SM_ENTER(EAP, INITIALIZE);
 		break;
+	/* EAP处于空闲状态 */
 	case EAP_IDLE:
 		if (sm->eap_if.retransWhile == 0)
 			SM_ENTER(EAP, RETRANSMIT);
+		/* 有请求者发来的EAP-Response报文 */
 		else if (sm->eap_if.eapResp)
 			SM_ENTER(EAP, RECEIVED);
 		break;
@@ -716,9 +738,12 @@ SM_STEP(EAP)
 		SM_ENTER(EAP, IDLE);
 		break;
 	case EAP_INTEGRITY_CHECK:
+		/* 忽略 */
 		if (sm->ignore)
 			SM_ENTER(EAP, DISCARD);
+		/* 不忽略 */
 		else
+			/* EAP方法的响应处理 */
 			SM_ENTER(EAP, METHOD_RESPONSE);
 		break;
 	case EAP_METHOD_REQUEST:
@@ -776,6 +801,7 @@ SM_STEP(EAP)
 			SM_ENTER(EAP, FAILURE);
 		else if (sm->decision == DECISION_SUCCESS)
 			SM_ENTER(EAP, SUCCESS);
+		/* 向AAA服务器转发EAP-Response报文 */
 		else if (sm->decision == DECISION_PASSTHROUGH)
 			SM_ENTER(EAP, INITIALIZE_PASSTHROUGH);
 		else
@@ -1119,8 +1145,10 @@ static EapType eap_sm_Policy_getNextMethod(struct eap_sm *sm, int *vendor)
 	 * EAP-Request/Identity.
 	 * Re-auth sets currentId == -1, so that can be used here to select
 	 * whether Identity needs to be requested again. */
+	/* 还没有用户名 || 还没有发送过EAP-Request */
 	if (sm->identity == NULL || sm->currentId == -1) {
 		*vendor = EAP_VENDOR_IETF;
+		/* 选择发送EAP-Request/Identity */
 		next = EAP_TYPE_IDENTITY;
 		sm->update_user = TRUE;
 	} else if (sm->user && idx < EAP_MAX_METHODS &&
@@ -1141,8 +1169,13 @@ static EapType eap_sm_Policy_getNextMethod(struct eap_sm *sm, int *vendor)
 
 static int eap_sm_Policy_getDecision(struct eap_sm *sm)
 {
+	/* 没有使用hostapd的内部RADIUS服务器
+	   && 请求者上报了用户名
+	   && 不是重认证状态
+	*/
 	if (!sm->eap_server && sm->identity && !sm->start_reauth) {
 		wpa_printf(MSG_DEBUG, "EAP: getDecision: -> PASSTHROUGH");
+		/* 向外部RADIUS服务器转发EAP-Packet */
 		return DECISION_PASSTHROUGH;
 	}
 
@@ -1202,6 +1235,7 @@ static int eap_sm_Policy_getDecision(struct eap_sm *sm)
 		return DECISION_CONTINUE;
 	}
 
+	/* 还没有上报用户名 || 没有发送过EAP-Request报文 */
 	if (sm->identity == NULL || sm->currentId == -1) {
 		wpa_printf(MSG_DEBUG, "EAP: getDecision: no identity known "
 			   "yet -> CONTINUE");

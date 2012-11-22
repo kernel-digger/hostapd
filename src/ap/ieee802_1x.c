@@ -603,6 +603,11 @@ static void handle_eap_response(struct hostapd_data *hapd,
 		return;
 	}
 
+	/* 枚举值EapType
+		EAP_TYPE_IDENTITY
+		EAP_TYPE_TLS
+		EAP_TYPE_PEAP
+	*/
 	sm->eap_type_supp = type = data[0];
 
 	hostapd_logger(hapd, sm->addr, HOSTAPD_MODULE_IEEE8021X,
@@ -659,6 +664,7 @@ static void handle_eap(struct hostapd_data *hapd, struct sta_info *sta,
 		return;
 	case EAP_CODE_RESPONSE:
 		wpa_printf(MSG_DEBUG, " (response)");
+		/* 处理请求者发来的EAP-Response报文 */
 		handle_eap_response(hapd, sta, eap, eap_len);
 		break;
 	case EAP_CODE_SUCCESS:

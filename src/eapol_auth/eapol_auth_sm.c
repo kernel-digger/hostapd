@@ -263,6 +263,7 @@ SM_STATE(AUTH_PAE, RESTART)
 
 	SM_ENTRY_MA(AUTH_PAE, RESTART, auth_pae);
 
+	/* 重启EAP状态机 */
 	sm->eap_if->eapRestart = TRUE;
 }
 
@@ -371,8 +372,11 @@ SM_STATE(AUTH_PAE, ABORTING)
 
 	SM_ENTRY_MA(AUTH_PAE, ABORTING, auth_pae);
 
+	/* 需要终止认证 */
 	sm->authAbort = TRUE;
+	/* 终止密钥的4路握手 */
 	sm->keyRun = FALSE;
+	/* 密钥没有协商 */
 	sm->keyDone = FALSE;
 }
 
@@ -442,6 +446,7 @@ SM_STEP(AUTH_PAE)
 			SM_ENTER(AUTH_PAE, RESTART);
 			break;
 		case AUTH_PAE_RESTART:
+			/* EAP状态机已完成重启 */
 			if (!sm->eap_if->eapRestart)
 				SM_ENTER(AUTH_PAE, CONNECTING);
 			break;
@@ -484,7 +489,9 @@ SM_STEP(AUTH_PAE)
 		case AUTH_PAE_ABORTING:
 			if (sm->eapolLogoff && !sm->authAbort)
 				SM_ENTER(AUTH_PAE, DISCONNECTED);
+			/* 没有收到EAPOL-Logoff && 不是认证终止状态 */
 			else if (!sm->eapolLogoff && !sm->authAbort)
+				/* 重启AUTH_PAE状态机 */
 				SM_ENTER(AUTH_PAE, RESTART);
 			break;
 		case AUTH_PAE_FORCE_AUTH:
@@ -507,9 +514,11 @@ SM_STATE(BE_AUTH, INITIALIZE)
 {
 	SM_ENTRY_MA(BE_AUTH, INITIALIZE, be_auth);
 
+	/* 终止STA先前的认证流程 */
 	/* _ieee802_1x_abort_auth */
 	abortAuth();
 	sm->eap_if->eapNoReq = FALSE;
+	/* 已完成认证终止 */
 	sm->authAbort = FALSE;
 }
 
@@ -547,6 +556,7 @@ SM_STATE(BE_AUTH, RESPONSE)
 	sm->eapolEap = FALSE;
 	sm->eap_if->eapNoReq = FALSE;
 	sm->aWhile = sm->serverTimeout;
+	/* 标记收到了请求者的EAP-Response报文 */
 	sm->eap_if->eapResp = TRUE;
 	/* sendRespToServer(); */
 	sm->backendResponses++;
@@ -621,6 +631,7 @@ SM_STEP(BE_AUTH)
 		SM_ENTER(BE_AUTH, IDLE);
 		break;
 	case BE_AUTH_REQUEST:
+		/* 收到了请求者的EAP-Response报文 */
 		if (sm->eapolEap)
 			SM_ENTER(BE_AUTH, RESPONSE);
 		/* 有EAP-Request报文需要发送给请求者 */
@@ -657,6 +668,7 @@ SM_STEP(BE_AUTH)
 	case BE_AUTH_IDLE:
 		if (sm->eap_if->eapFail && sm->authStart)
 			SM_ENTER(BE_AUTH, FAIL);
+		/* 有EAP-Request报文需要发送给请求者 && BE_AUTH状态机已可以启动 */
 		else if (sm->eap_if->eapReq && sm->authStart)
 			SM_ENTER(BE_AUTH, REQUEST);
 		else if (sm->eap_if->eapSuccess && sm->authStart)

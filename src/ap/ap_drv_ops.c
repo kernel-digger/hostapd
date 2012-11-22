@@ -525,6 +525,7 @@ int hostapd_driver_commit(struct hostapd_data *hapd)
 {
 	if (hapd->driver == NULL || hapd->driver->commit == NULL)
 		return 0;
+	/* atheros_commit */
 	return hapd->driver->commit(hapd->drv_priv);
 }
 

@@ -139,6 +139,7 @@ static void eap_identity_process(struct eap_sm *sm, void *priv,
 	} else {
 		os_memcpy(sm->identity, pos, len);
 		sm->identity_len = len;
+		/* EAP方法状态成功 */
 		data->state = SUCCESS;
 	}
 }
