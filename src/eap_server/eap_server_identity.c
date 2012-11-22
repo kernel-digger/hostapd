@@ -129,8 +129,10 @@ static void eap_identity_process(struct eap_sm *sm, void *priv,
 
 	wpa_hexdump_ascii(MSG_DEBUG, "EAP-Identity: Peer identity", pos, len);
 	if (sm->identity)
+		/* 用户名变更 */
 		sm->update_user = TRUE;
 	os_free(sm->identity);
+	/* 分配空间，保存用户名 */
 	sm->identity = os_malloc(len ? len : 1);
 	if (sm->identity == NULL) {
 		data->state = FAILURE;

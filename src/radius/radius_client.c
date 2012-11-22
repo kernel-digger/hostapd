@@ -493,6 +493,9 @@ static void radius_client_timer(void *eloop_ctx, void *timeout_ctx)
 }
 
 
+/*
+更新RADIUS报文重传定时器链表
+*/
 static void radius_client_update_timeout(struct radius_client_data *radius)
 {
 	struct os_time now;
@@ -522,6 +525,9 @@ static void radius_client_update_timeout(struct radius_client_data *radius)
 }
 
 
+/*
+加入重传定时器链表
+*/
 static void radius_client_list_add(struct radius_client_data *radius,
 				   struct radius_msg *msg,
 				   RadiusType msg_type,
@@ -647,6 +653,7 @@ int radius_client_send(struct radius_client_data *radius,
 		radius_client_list_del(radius, msg_type, addr);
 	}
 
+	/* 记账服务器 */
 	if (msg_type == RADIUS_ACCT || msg_type == RADIUS_ACCT_INTERIM) {
 		if (conf->acct_server == NULL) {
 			hostapd_logger(radius->ctx, NULL,
@@ -661,6 +668,7 @@ int radius_client_send(struct radius_client_data *radius,
 		name = "accounting";
 		s = radius->acct_sock;
 		conf->acct_server->requests++;
+	/* 认证服务器 */
 	} else {
 		if (conf->auth_server == NULL) {
 			hostapd_logger(radius->ctx, NULL,
@@ -684,6 +692,7 @@ int radius_client_send(struct radius_client_data *radius,
 		radius_msg_dump(msg);
 
 	buf = radius_msg_get_buf(msg);
+	/* 发送 */
 	res = send(s, wpabuf_head(buf), wpabuf_len(buf), 0);
 	if (res < 0)
 		radius_client_handle_send_error(radius, s, msg_type);
@@ -875,8 +884,10 @@ static void radius_client_receive(int sock, void *eloop_ctx, void *sock_ctx)
 u8 radius_client_get_id(struct radius_client_data *radius)
 {
 	struct radius_msg_list *entry, *prev, *_remove;
+	/* 取下一个id，取完加1 */
 	u8 id = radius->next_radius_identifier++;
 
+	/* 把使用该@id的挂起报文移除 */
 	/* remove entries with matching id from retransmit list to avoid
 	 * using new reply from the RADIUS server with an old request */
 	entry = radius->msgs;
@@ -903,6 +914,7 @@ u8 radius_client_get_id(struct radius_client_data *radius)
 			radius_client_msg_free(_remove);
 	}
 
+	/* 返回一个可用id */
 	return id;
 }
 

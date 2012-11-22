@@ -446,6 +446,7 @@ static void ieee802_1x_encapsulate_radius(struct hostapd_data *hapd,
 	wpa_printf(MSG_DEBUG, "Encapsulating EAP message into a RADIUS "
 		   "packet");
 
+	/* RADIUS报文id */
 	sm->radius_identifier = radius_client_get_id(hapd->radius);
 	msg = radius_msg_new(RADIUS_CODE_ACCESS_REQUEST,
 			     sm->radius_identifier);
@@ -456,6 +457,7 @@ static void ieee802_1x_encapsulate_radius(struct hostapd_data *hapd,
 
 	radius_msg_make_authenticator(msg, (u8 *) sta, sizeof(*sta));
 
+	/* 用户名 */
 	if (sm->identity &&
 	    !radius_msg_add_attr(msg, RADIUS_ATTR_USER_NAME,
 				 sm->identity, sm->identity_len)) {
@@ -463,6 +465,7 @@ static void ieee802_1x_encapsulate_radius(struct hostapd_data *hapd,
 		goto fail;
 	}
 
+	/* NAS IP */
 	if (hapd->conf->own_ip_addr.af == AF_INET &&
 	    !radius_msg_add_attr(msg, RADIUS_ATTR_NAS_IP_ADDRESS,
 				 (u8 *) &hapd->conf->own_ip_addr.u.v4, 4)) {
@@ -479,6 +482,7 @@ static void ieee802_1x_encapsulate_radius(struct hostapd_data *hapd,
 	}
 #endif /* CONFIG_IPV6 */
 
+	/* NAS ID */
 	if (hapd->conf->nas_identifier &&
 	    !radius_msg_add_attr(msg, RADIUS_ATTR_NAS_IDENTIFIER,
 				 (u8 *) hapd->conf->nas_identifier,
@@ -487,11 +491,15 @@ static void ieee802_1x_encapsulate_radius(struct hostapd_data *hapd,
 		goto fail;
 	}
 
+	/* NAS PORT */
 	if (!radius_msg_add_attr_int32(msg, RADIUS_ATTR_NAS_PORT, sta->aid)) {
 		printf("Could not add NAS-Port\n");
 		goto fail;
 	}
 
+	/* CALLED STATION ID
+	   格式00-00-00-00-00-00:ssid
+	*/
 	os_snprintf(buf, sizeof(buf), RADIUS_802_1X_ADDR_FORMAT ":%s",
 		    MAC2STR(hapd->own_addr), hapd->conf->ssid.ssid);
 	buf[sizeof(buf) - 1] = '\0';
@@ -501,6 +509,7 @@ static void ieee802_1x_encapsulate_radius(struct hostapd_data *hapd,
 		goto fail;
 	}
 
+	/* STA MAC */
 	os_snprintf(buf, sizeof(buf), RADIUS_802_1X_ADDR_FORMAT,
 		    MAC2STR(sta->addr));
 	buf[sizeof(buf) - 1] = '\0';
@@ -540,11 +549,13 @@ static void ieee802_1x_encapsulate_radius(struct hostapd_data *hapd,
 		goto fail;
 	}
 
+	/* EAP-Message */
 	if (eap && !radius_msg_add_eap(msg, eap, len)) {
 		printf("Could not add EAP-Message\n");
 		goto fail;
 	}
 
+	/* 复制Access-Challenge挑战报文中的STATE属性 */
 	/* State attribute must be copied if and only if this packet is
 	 * Access-Request reply to the previous Access-Challenge */
 	if (sm->last_recv_radius &&
@@ -573,6 +584,9 @@ static void ieee802_1x_encapsulate_radius(struct hostapd_data *hapd,
 #endif /* CONFIG_NO_RADIUS */
 
 
+/*
+处理请求者发送来的EAP-Response报文
+*/
 static void handle_eap_response(struct hostapd_data *hapd,
 				struct sta_info *sta, struct eap_hdr *eap,
 				size_t len)
@@ -600,11 +614,16 @@ static void handle_eap_response(struct hostapd_data *hapd,
 	sm->dot1xAuthEapolRespFramesRx++;
 
 	wpabuf_free(sm->eap_if->eapRespData);
+	/* 记录EAP-Response报文数据 */
 	sm->eap_if->eapRespData = wpabuf_alloc_copy(eap, len);
+	/* 标记收到一个EAP-Packet报文 */
 	sm->eapolEap = TRUE;
 }
 
 
+/*
+处理请求者发送来的EAP-Packet
+*/
 /* Process incoming EAP packet from Supplicant */
 static void handle_eap(struct hostapd_data *hapd, struct sta_info *sta,
 		       u8 *buf, size_t len)
@@ -1059,7 +1078,7 @@ static void ieee802_1x_decapsulate_radius(struct hostapd_data *hapd,
 
 	msg = sm->last_recv_radius;
 
-	/* 提取EAP-MESSAGE数据 */
+	/* 提取EAP-Message属性的数据，即EAP报文 */
 	eap = radius_msg_get_eap(msg, &len);
 	if (eap == NULL) {
 		/* RFC 3579, Chap. 2.6.3:
@@ -1447,6 +1466,7 @@ ieee802_1x_receive_auth(struct radius_msg *msg, struct radius_msg *req,
 		override_eapReq = 1;
 		break;
 	case RADIUS_CODE_ACCESS_CHALLENGE:
+		/* 标记有AAA的EAP-Request需要转发给请求者 */
 		sm->eap_if->aaaEapReq = TRUE;
 		if (session_timeout_set) {
 			/* RFC 2869, Ch. 2.3.2; RFC 3580, Ch. 3.17 */

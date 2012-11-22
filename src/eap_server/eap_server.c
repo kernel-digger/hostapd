@@ -325,7 +325,16 @@ SM_STATE(EAP, METHOD_RESPONSE)
 {
 	SM_ENTRY(EAP, METHOD_RESPONSE);
 
+	/* 处理请求者发来的EAP-Response报文
+		eap_identity_process
+		eap_tls_process
+		eap_peap_process
+		eap_md5_process
+	*/
 	sm->m->process(sm, sm->eap_method_priv, sm->eap_if.eapRespData);
+	/* eap_identity_isDone
+
+	*/
 	if (sm->m->isDone(sm, sm->eap_method_priv)) {
 		eap_sm_Policy_update(sm, NULL, 0);
 		os_free(sm->eap_if.eapKeyData);
@@ -360,6 +369,7 @@ SM_STATE(EAP, PROPOSE_METHOD)
 		sm->m->reset(sm, sm->eap_method_priv);
 		sm->eap_method_priv = NULL;
 	}
+	/* 根据EapType选择要使用的方法 */
 	sm->m = eap_server_get_eap_method(vendor, type);
 	if (sm->m) {
 		sm->eap_method_priv = sm->m->init(sm);
@@ -515,6 +525,7 @@ SM_STATE(EAP, SEND_REQUEST2)
 
 	sm->retransCount = 0;
 	if (sm->eap_if.eapReqData) {
+		/* 记录最后发送给请求者的EAP报文数据 */
 		if (eap_copy_buf(&sm->lastReqData, sm->eap_if.eapReqData) == 0)
 		{
 			sm->eap_if.eapResp = FALSE;
@@ -536,6 +547,7 @@ SM_STATE(EAP, AAA_REQUEST)
 {
 	SM_ENTRY(EAP, AAA_REQUEST);
 
+	/* 没有请求者的EAP-Response数据需要转发给AAA服务器 */
 	if (sm->eap_if.eapRespData == NULL) {
 		wpa_printf(MSG_INFO, "EAP: AAA_REQUEST - no eapRespData");
 		return;
@@ -548,6 +560,7 @@ SM_STATE(EAP, AAA_REQUEST)
 	 * stores the identity into sm->identity.
 	 */
 
+	/* 复制EAP-Response数据 */
 	eap_copy_buf(&sm->eap_if.aaaEapRespData, sm->eap_if.eapRespData);
 }
 
@@ -556,6 +569,7 @@ SM_STATE(EAP, AAA_RESPONSE)
 {
 	SM_ENTRY(EAP, AAA_RESPONSE);
 
+	/* 复制EAP报文，准备封装成EAPOL报文发送给请求者 */
 	eap_copy_buf(&sm->eap_if.eapReqData, sm->eap_if.aaaEapReqData);
 	sm->currentId = eap_sm_getId(sm->eap_if.eapReqData);
 	sm->methodTimeout = sm->eap_if.aaaMethodTimeout;
@@ -570,6 +584,7 @@ SM_STATE(EAP, AAA_IDLE)
 	sm->eap_if.aaaSuccess = FALSE;
 	sm->eap_if.aaaEapReq = FALSE;
 	sm->eap_if.aaaEapNoReq = FALSE;
+	/* 有EAP-Response需要转发给AAA */
 	sm->eap_if.aaaEapResp = TRUE;
 }
 
@@ -792,7 +807,9 @@ SM_STEP(EAP)
 			SM_ENTER(EAP, IDLE2);
 		break;
 	case EAP_RECEIVED2:
+		/* 有EAP-Response，并且与之前请求的id一致 */
 		if (sm->rxResp && (sm->respId == sm->currentId))
+			/* 进入给AAA发送Access-Request报文状态 */
 			SM_ENTER(EAP, AAA_REQUEST);
 		else
 			SM_ENTER(EAP, DISCARD2);
@@ -814,6 +831,7 @@ SM_STEP(EAP)
 			SM_ENTER(EAP, FAILURE2);
 		else if (sm->eap_if.aaaSuccess)
 			SM_ENTER(EAP, SUCCESS2);
+		/* 有AAA的EAP-Request需要转发给请求者 */
 		else if (sm->eap_if.aaaEapReq)
 			SM_ENTER(EAP, AAA_RESPONSE);
 		else if (sm->eap_if.aaaTimeout)
@@ -916,6 +934,7 @@ static void eap_sm_parseEapResp(struct eap_sm *sm, const struct wpabuf *resp)
 	sm->respId = hdr->identifier;
 
 	if (hdr->code == EAP_CODE_RESPONSE)
+		/* 标记收到请求者的EAP-Response */
 		sm->rxResp = TRUE;
 
 	/* EAP头后有数据 */

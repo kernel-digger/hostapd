@@ -344,6 +344,9 @@ void radius_msg_dump(struct radius_msg *msg)
 }
 
 
+/*
+添加Message-Authenticator属性
+*/
 int radius_msg_finish(struct radius_msg *msg, const u8 *secret,
 		      size_t secret_len)
 {
@@ -813,6 +816,10 @@ void radius_msg_make_authenticator(struct radius_msg *msg,
 }
 
 
+/*
+取属性类型为Vendor-Specific
+Vender-ID为@vendor的属性值
+*/
 /* Get Vendor-specific RADIUS Attribute from a parsed RADIUS message.
  * Returns the Attribute payload and sets alen to indicate the length of the
  * payload if a vendor attribute with subtype is found, otherwise returns NULL.
@@ -834,6 +841,7 @@ static u8 *radius_msg_get_vendor_attr(struct radius_msg *msg, u32 vendor,
 		u32 vendor_id;
 		struct radius_attr_vendor *vhdr;
 
+		/* 属性类型为Vendor-Specific */
 		if (attr->type != RADIUS_ATTR_VENDOR_SPECIFIC)
 			continue;
 

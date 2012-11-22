@@ -192,6 +192,10 @@ static const u8 * hostapd_wpa_auth_get_psk(void *ctx, const u8 *addr,
 }
 
 
+/*
+Ã·»°MSK
+master session key
+*/
 static int hostapd_wpa_auth_get_msk(void *ctx, const u8 *addr, u8 *msk,
 				    size_t *len)
 {

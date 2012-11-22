@@ -623,7 +623,7 @@ SM_STEP(BE_AUTH)
 	case BE_AUTH_REQUEST:
 		if (sm->eapolEap)
 			SM_ENTER(BE_AUTH, RESPONSE);
-		/* 有EAP-Request报文需要发送给STA */
+		/* 有EAP-Request报文需要发送给请求者 */
 		else if (sm->eap_if->eapReq)
 			SM_ENTER(BE_AUTH, REQUEST);
 		else if (sm->eap_if->eapTimeout)
@@ -1025,6 +1025,7 @@ restart:
 		}
 
 		/* TODO: find a better location for this */
+		/* 有EAP-Response数据需要发送给AAA服务器 */
 		if (sm->eap_if->aaaEapResp) {
 			sm->eap_if->aaaEapResp = FALSE;
 			if (sm->eap_if->aaaEapRespData == NULL) {
@@ -1032,6 +1033,7 @@ restart:
 					   "but no aaaEapRespData available");
 				return;
 			}
+			/* 给AAA服务器发送数据 */
 			/* ieee802_1x_aaa_send */
 			sm->eapol->cb.aaa_send(
 				sm->eapol->conf.ctx, sm->sta,

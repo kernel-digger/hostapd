@@ -47,6 +47,7 @@ struct eap_user {
 struct eap_eapol_interface {
 	/* Lower layer to full authenticator variables */
 	Boolean eapResp; /* shared with EAPOL Backend Authentication */
+	/* 记录请求者发送来的EAP-Response报文 */
 	struct wpabuf *eapRespData;
 	/* portEnabled - Set by the EAPOL entity if EAPOL PDUs
 	can be transmitted and received by the PAE. */
@@ -111,6 +112,7 @@ struct eap_eapol_interface {
 	Boolean aaaFail;
 	/* 认证服务器RADIUS报文中的EAP-MESSAGE数据 */
 	struct wpabuf *aaaEapReqData;
+	/* RADIUS的Access-Accept报文中提取出来的key信息 */
 	u8 *aaaEapKeyData;
 	size_t aaaEapKeyDataLen;
 	Boolean aaaEapKeyAvailable;

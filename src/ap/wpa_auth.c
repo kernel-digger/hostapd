@@ -100,11 +100,17 @@ static inline const u8 * wpa_auth_get_psk(struct wpa_authenticator *wpa_auth,
 }
 
 
+/*
+提取MSK
+
+@return	: 0 - 成功
+*/
 static inline int wpa_auth_get_msk(struct wpa_authenticator *wpa_auth,
 				   const u8 *addr, u8 *msk, size_t *len)
 {
 	if (wpa_auth->cb.get_msk == NULL)
 		return -1;
+	/* hostapd_wpa_auth_get_msk */
 	return wpa_auth->cb.get_msk(wpa_auth->cb.ctx, addr, msk, len);
 }
 
@@ -1728,6 +1734,7 @@ SM_STATE(WPA_PTK, INITPMK)
 	} else if (wpa_auth_get_msk(sm->wpa_auth, sm->addr, msk, &len) == 0) {
 		wpa_printf(MSG_DEBUG, "WPA: PMK from EAPOL state machine "
 			   "(len=%lu)", (unsigned long) len);
+		/* 设置为PMK */
 		os_memcpy(sm->PMK, msk, PMK_LEN);
 #ifdef CONFIG_IEEE80211R
 		if (len >= 2 * PMK_LEN) {
@@ -2287,7 +2294,9 @@ SM_STEP(WPA_PTK)
 	/* 由SM_STATE(WPA_PTK, AUTHENTICATION2)中切换过来 */
 	case WPA_PTK_AUTHENTICATION2:
 		/* !PSK && 802.1X::keyRun */
-		/* 8021x认证 */
+		/* 8021x认证
+		   && RADIUS认证成功，进入密钥传送状态
+		*/
 		if (wpa_key_mgmt_wpa_ieee8021x(sm->wpa_key_mgmt) &&
 		    wpa_auth_get_eapol(sm->wpa_auth, sm->addr,
 				       WPA_EAPOL_keyRun) > 0)

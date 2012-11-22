@@ -150,6 +150,7 @@ struct eap_sm {
 	void *eapol_ctx, *msg_ctx;
 	struct eapol_callbacks *eapol_cb;
 	void *eap_method_priv;
+	/* 请求者EAP-Response/Identity报文中上报的用户名标识Identity */
 	u8 *identity;
 	size_t identity_len;
 	/* Whether Phase 2 method should validate identity match */

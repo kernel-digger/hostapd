@@ -256,6 +256,7 @@ struct eapol_state_machine {
 	size_t identity_len;
 	u8 eap_type_authsrv; /* EAP type of the last EAP packet from
 			      * Authentication server */
+	/* ²Î¿¼Ã¶¾ÙÖµEapType */
 	u8 eap_type_supp; /* EAP type of the last EAP packet from Supplicant */
 	struct radius_class_data radius_class;
 
