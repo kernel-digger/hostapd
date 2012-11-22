@@ -548,9 +548,13 @@ void eloop_run(void)
 	if (rfds == NULL || wfds == NULL || efds == NULL)
 		goto out;
 
+	/* 循环未终止
+	   有定时器，有socket
+	*/
 	while (!eloop.terminate &&
 	       (!dl_list_empty(&eloop.timeout) || eloop.readers.count > 0 ||
 		eloop.writers.count > 0 || eloop.exceptions.count > 0)) {
+		/* 根据定时器链表第一个节点计算select的阻塞时间 */
 		struct eloop_timeout *timeout;
 		timeout = dl_list_first(&eloop.timeout, struct eloop_timeout,
 					list);
@@ -564,17 +568,21 @@ void eloop_run(void)
 			_tv.tv_usec = tv.usec;
 		}
 
+		/* 设置描述符 */
 		eloop_sock_table_set_fds(&eloop.readers, rfds);
 		eloop_sock_table_set_fds(&eloop.writers, wfds);
 		eloop_sock_table_set_fds(&eloop.exceptions, efds);
+		/* 使用select等待 */
 		res = select(eloop.max_sock + 1, rfds, wfds, efds,
 			     timeout ? &_tv : NULL);
 		if (res < 0 && errno != EINTR && errno != 0) {
 			perror("select");
 			goto out;
 		}
+		/* 信号处理 */
 		eloop_process_pending_signals();
 
+		/* 定时器 */
 		/* check if some registered timeouts have occurred */
 		timeout = dl_list_first(&eloop.timeout, struct eloop_timeout,
 					list);
@@ -586,6 +594,7 @@ void eloop_run(void)
 				eloop_timeout_handler handler =
 					timeout->handler;
 				eloop_remove_timeout(timeout);
+				/* 定时器回调函数 */
 				handler(eloop_data, user_data);
 			}
 
@@ -594,6 +603,7 @@ void eloop_run(void)
 		if (res <= 0)
 			continue;
 
+		/* socket处理 */
 		eloop_sock_table_dispatch(&eloop.readers, rfds);
 		eloop_sock_table_dispatch(&eloop.writers, wfds);
 		eloop_sock_table_dispatch(&eloop.exceptions, efds);
