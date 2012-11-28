@@ -702,6 +702,7 @@ SM_STATE(REAUTH_TIMER, REAUTHENTICATE)
 	SM_ENTRY_MA(REAUTH_TIMER, REAUTHENTICATE, reauth_timer);
 
 	sm->reAuthenticate = TRUE;
+	/* ieee802_1x_eapol_event */
 	sm->eapol->cb.eapol_event(sm->eapol->conf.ctx, sm->sta,
 				  EAPOL_AUTH_REAUTHENTICATE);
 }

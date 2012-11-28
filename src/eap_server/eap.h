@@ -103,6 +103,7 @@ struct eap_eapol_interface {
 	The PAE key transmit machine will reset this signal once the link has been made secure. */
 	Boolean eapKeyAvailable; /* called keyAvailable in IEEE 802.1X-2004 */
 
+	/* RFC 4137, 7.1.1 */
 	/* AAA interface to full authenticator variables */
 	Boolean aaaEapReq;
 	Boolean aaaEapNoReq;
