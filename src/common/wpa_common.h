@@ -177,7 +177,9 @@
 /* 指示是否为SMK握手消息 */
 #define WPA_KEY_INFO_SMK_MESSAGE BIT(13)
 
-
+/*
+95个字节
+*/
 struct wpa_eapol_key {
 	u8 type;
 	/* Note: key_info, key_length, and key_data_length are unaligned */
@@ -192,6 +194,7 @@ struct wpa_eapol_key {
 	u8 key_id[8]; /* Reserved in IEEE 802.11i/RSN */
 	/* EAPOL-Key帧的MIC */
 	u8 key_mic[16];
+	/* 后面数据的长度，比如带上一个WPA IE信息，长度26 */
 	u8 key_data_length[2]; /* big endian */
 	/* followed by key_data_length bytes of key_data */
 } STRUCT_PACKED;

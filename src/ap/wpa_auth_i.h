@@ -28,9 +28,11 @@ struct wpa_stsl_negotiation {
 
 
 struct wpa_state_machine {
+	/* 所关联的bss的认证者结构 */
 	struct wpa_authenticator *wpa_auth;
 	struct wpa_group *group;
 
+	/* STA MAC */
 	u8 addr[ETH_ALEN];
 
 	/* 该字段的状态赋值由宏SM_ENTRY_MA控制
@@ -98,6 +100,7 @@ struct wpa_state_machine {
 	u8 PMK[PMK_LEN];
 	/* PTK - This variable is the current PTK. */
 	struct wpa_ptk PTK;
+	/* 4路握手，收到STA的第2个报文，成功导出PTK后，标记为TRUE */
 	Boolean PTK_valid;
 	Boolean pairwise_set;
 	int keycount;

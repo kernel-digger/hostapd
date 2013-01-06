@@ -557,6 +557,12 @@ int wpa_reconfig(struct wpa_authenticator *wpa_auth,
 }
 
 
+/*
+分配每STA的WPA状态机
+
+@wpa_auth	: 认证者
+@addr		: STA MAC
+*/
 struct wpa_state_machine *
 wpa_auth_sta_init(struct wpa_authenticator *wpa_auth, const u8 *addr)
 {
@@ -795,13 +801,14 @@ void wpa_receive(struct wpa_authenticator *wpa_auth,
 	if (wpa_auth == NULL || !wpa_auth->conf.wpa || sm == NULL)
 		return;
 
+	/* 检查报文长度最小值 */
 	if (data_len < sizeof(*hdr) + sizeof(*key))
 		return;
 
 	hdr = (struct ieee802_1x_hdr *) data;
 	key = (struct wpa_eapol_key *) (hdr + 1);
 	key_info = WPA_GET_BE16(key->key_info);
-	/* 检查长度 */
+	/* 检查后面数据的长度 */
 	key_data_length = WPA_GET_BE16(key->key_data_length);
 	wpa_printf(MSG_DEBUG, "WPA: Received EAPOL-Key from " MACSTR
 		   " key_info=0x%x type=%u key_data_length=%u",
@@ -862,12 +869,15 @@ void wpa_receive(struct wpa_authenticator *wpa_auth,
 	} else if (key_info & WPA_KEY_INFO_REQUEST) {
 		msg = REQUEST;
 		msgtxt = "Request";
+	/* STA回应的组播密钥协商报文 */
 	} else if (!(key_info & WPA_KEY_INFO_KEY_TYPE)) {
 		msg = GROUP_2;
 		msgtxt = "2/2 Group";
+	/* STA回应的成对密钥协商第4个握手报文 */
 	} else if (key_data_length == 0) {
 		msg = PAIRWISE_4;
 		msgtxt = "4/4 Pairwise";
+	/* STA回应的成对密钥协商第2个握手报文 */
 	} else {
 		msg = PAIRWISE_2;
 		msgtxt = "2/4 Pairwise";
@@ -1890,6 +1900,7 @@ SM_STATE(WPA_PTK, PTKCALCNEGOTIATING)
 		if (wpa_key_mgmt_wpa_psk(sm->wpa_key_mgmt)) {
 			pmk = wpa_auth_get_psk(sm->wpa_auth, sm->addr, pmk);
 			if (pmk == NULL)
+				/* 没有psk或遍历完psk都不对，终止循环 */
 				break;
 		} else
 			pmk = sm->PMK;
@@ -1900,7 +1911,9 @@ SM_STATE(WPA_PTK, PTKCALCNEGOTIATING)
 		/* 校验MIC */
 		if (wpa_verify_key_mic(&PTK, sm->last_rx_eapol_key,
 				       sm->last_rx_eapol_key_len) == 0) {
+			/* 标记PTK导出成功 */
 			ok = 1;
+			/* 终止循环 */
 			break;
 		}
 
@@ -1908,7 +1921,7 @@ SM_STATE(WPA_PTK, PTKCALCNEGOTIATING)
 			break;
 	}
 
-	/* MIC错误 */
+	/* MIC错误，没有正确的PTK */
 	if (!ok) {
 		wpa_auth_logger(sm->wpa_auth, sm->addr, LOGGER_DEBUG,
 				"invalid MIC in msg 2/4 of 4-Way Handshake");
@@ -1952,6 +1965,7 @@ SM_STATE(WPA_PTK, PTKCALCNEGOTIATING)
 
 	/* 复制计算出的PTK */
 	os_memcpy(&sm->PTK, &PTK, sizeof(PTK));
+	/* 标记PTK有效 */
 	sm->PTK_valid = TRUE;
 }
 
@@ -2527,6 +2541,7 @@ SM_STATE(WPA_PTK_GROUP, KEYERROR)
 IEEE Std 802.11-2012, 11.6.11 RSNA Authenticator key management state machine
 Figure 11-46—Authenticator state machines, part 3
 
+每个STA的组播密钥状态机
 */
 SM_STEP(WPA_PTK_GROUP)
 {
@@ -2536,6 +2551,7 @@ SM_STEP(WPA_PTK_GROUP)
 	} else switch (sm->wpa_ptk_group_state) {
 	case WPA_PTK_GROUP_IDLE:
 		/* GUpdateStationKeys */
+		/* 组中sta全部需要更新wpa_group_setkeys() => wpa_group_update_sta() */
 		if (sm->GUpdateStationKeys ||
 		    (sm->wpa == WPA_VERSION_WPA && sm->PInitAKeys))
 			SM_ENTER(WPA_PTK_GROUP, REKEYNEGOTIATING);
