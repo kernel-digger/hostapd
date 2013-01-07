@@ -420,6 +420,15 @@ atheros_sta_set_flags(void *priv, const u8 *addr,
 	return 0;
 }
 
+#if 0
+结构定义ieee80211_ioctl.h
+
+struct ieee80211req_del_key {
+        u_int8_t idk_keyix;             /* key index */
+        u_int8_t idk_macaddr[IEEE80211_ADDR_LEN];
+};
+#endif
+
 static int
 atheros_del_key(void *priv, const u8 *addr, int key_idx)
 {

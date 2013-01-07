@@ -183,11 +183,15 @@ struct wpa_group {
 	int GKeyDoneStations;
 	/* GTKReKey - This variable is set to TRUE when a Group Key Handshake is required.
 	This is a global variable. */
+	/* wpa_rekey_gtk中置为TRUE
+	   表示更新gtk，然后向所有STA下发新密钥
+	*/
 	Boolean GTKReKey;
 	int GTK_len;
 	/* GN, GM - These are the current key indices for GTKs.
 	Swap(GM, GN) means that the global key index in GN is swapped with
 	the global key index in GM, so now GM and GN are reversed. */
+	/* 初始值 GN = 1, GM = 2 */
 	int GN, GM;
 	/* GTKAuthenticator - This variable is set to TRUE
 	if the Authenticator is on an AP
@@ -202,7 +206,8 @@ struct wpa_group {
 		WPA_GROUP_SETKEYS, WPA_GROUP_SETKEYSDONE
 	} wpa_group_state;
 
-	/* GMK - This variable is the buffer holding the current PMK.
+	/* GMK - This variable is the buffer holding the current GMK.
+	一个定时更新的可用来导出GTK的值
 	在wpa_group_init_gmk_and_counter中初始化 */
 	u8 GMK[WPA_GMK_LEN];
 	/* GTK - This variable is the current GTKs for each GTK index. */
@@ -213,6 +218,7 @@ struct wpa_group {
 	Boolean reject_4way_hs_for_entropy;
 #ifdef CONFIG_IEEE80211W
 	u8 IGTK[2][WPA_IGTK_LEN];
+	/* 初始值 GN_igtk = 4, GM_igtk = 5 */
 	int GN_igtk, GM_igtk;
 #endif /* CONFIG_IEEE80211W */
 };

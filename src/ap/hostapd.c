@@ -978,10 +978,12 @@ void hostapd_new_assoc_sta(struct hostapd_data *hapd, struct sta_info *sta,
 	/* 根据配置启动8021x认证状态机 */
 	/* Start IEEE 802.1X authentication process for new stations */
 	ieee802_1x_new_station(hapd, sta);
+	/* 重关联 */
 	if (reassoc) {
 		if (sta->auth_alg != WLAN_AUTH_FT &&
 		    !(sta->flags & (WLAN_STA_WPS | WLAN_STA_MAYBE_WPS)))
 			wpa_auth_sm_event(sta->wpa_sm, WPA_REAUTH);
 	} else
+	/* 新关联STA启动WPA认证状态机 */
 		wpa_auth_sta_associated(hapd->wpa_auth, sta->wpa_sm);
 }

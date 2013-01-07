@@ -115,6 +115,9 @@ static inline int wpa_auth_get_msk(struct wpa_authenticator *wpa_auth,
 }
 
 
+/*
+向驱动中设置密钥
+*/
 static inline int wpa_auth_set_key(struct wpa_authenticator *wpa_auth,
 				   int vlan_id,
 				   enum wpa_alg alg, const u8 *addr, int idx,
@@ -250,6 +253,9 @@ static void wpa_rekey_gmk(void *eloop_ctx, void *timeout_ctx)
 }
 
 
+/*
+组播密钥定时器函数
+*/
 static void wpa_rekey_gtk(void *eloop_ctx, void *timeout_ctx)
 {
 	struct wpa_authenticator *wpa_auth = eloop_ctx;
@@ -298,6 +304,9 @@ static void wpa_auth_pmksa_free_cb(struct rsn_pmksa_cache_entry *entry,
 }
 
 
+/*
+根据加密类型设置密钥长度值
+*/
 static void wpa_group_set_key_len(struct wpa_group *group, int cipher)
 {
 	switch (cipher) {
@@ -351,6 +360,12 @@ static int wpa_group_init_gmk_and_counter(struct wpa_authenticator *wpa_auth,
 }
 
 
+/*
+wpa_init() => wpa_group_init(wpa_auth, 0, 1)
+
+wpa_auth_add_group() => wpa_group_init(wpa_auth, vlan_id, 0)
+
+*/
 static struct wpa_group * wpa_group_init(struct wpa_authenticator *wpa_auth,
 					 int vlan_id, int delay_init)
 {
@@ -399,9 +414,20 @@ static struct wpa_group * wpa_group_init(struct wpa_authenticator *wpa_auth,
 }
 
 /*
+分配wpa_authenticator结构空间
+生成WPA IE
+分配组播密钥组wpa_group
+分配rsn_pmksa_cache
+启动wpa_rekey_gmk定时器
+启动wpa_rekey_gtk定时器
+
 @addr	: 认证点的MAC，比如VAP的MAC(bssid)
 @conf	: 配置
 @cb	: 回调函数
+@return	: 返回wpa_authenticator
+
+hostapd_setup_wpa() => wpa_init(hapd->own_addr, &_conf, &cb)
+
 */
 /**
  * wpa_init - Initialize WPA authenticator
@@ -1232,8 +1258,10 @@ void __wpa_send_eapol(struct wpa_authenticator *wpa_auth,
 	int version, pairwise;
 	int i;
 
+	/* 基本报文长度 */
 	len = sizeof(struct ieee802_1x_hdr) + sizeof(struct wpa_eapol_key);
 
+	/* 选择加密算法 */
 	if (force_version)
 		version = force_version;
 	else if (wpa_use_aes_cmac(sm))
@@ -1243,6 +1271,7 @@ void __wpa_send_eapol(struct wpa_authenticator *wpa_auth,
 	else
 		version = WPA_KEY_INFO_TYPE_HMAC_MD5_RC4;
 
+	/* 是否为4路握手报文 1 = Pairwise, 0 = Group key */
 	pairwise = key_info & WPA_KEY_INFO_KEY_TYPE;
 
 	wpa_printf(MSG_DEBUG, "WPA: Send EAPOL(version=%d secure=%d mic=%d "
@@ -1257,6 +1286,7 @@ void __wpa_send_eapol(struct wpa_authenticator *wpa_auth,
 
 	key_data_len = kde_len;
 
+	/* 计算填充长度 */
 	if ((version == WPA_KEY_INFO_TYPE_HMAC_SHA1_AES ||
 	     version == WPA_KEY_INFO_TYPE_AES_128_CMAC) && encr) {
 		pad_len = key_data_len % 8;
@@ -1284,6 +1314,7 @@ void __wpa_send_eapol(struct wpa_authenticator *wpa_auth,
 		key_info |= keyidx << WPA_KEY_INFO_KEY_INDEX_SHIFT;
 	WPA_PUT_BE16(key->key_info, key_info);
 
+	/* 选择加密算法 */
 	alg = pairwise ? sm->pairwise : wpa_auth->conf.wpa_group;
 	switch (alg) {
 	case WPA_CIPHER_CCMP:
@@ -1320,9 +1351,11 @@ void __wpa_send_eapol(struct wpa_authenticator *wpa_auth,
 	if (key_rsc)
 		os_memcpy(key->key_rsc, key_rsc, WPA_KEY_RSC_LEN);
 
+	/* 有key data && 不需要加密，直接放置数据 */
 	if (kde && !encr) {
 		os_memcpy(key + 1, kde, kde_len);
 		WPA_PUT_BE16(key->key_data_length, kde_len);
+	/* 需要加密 && 有key data，先加密key data */
 	} else if (encr && kde) {
 		buf = os_zalloc(key_data_len);
 		if (buf == NULL) {
@@ -1404,9 +1437,11 @@ static void wpa_send_eapol(struct wpa_authenticator *wpa_auth,
 		timeout_ms = eapol_key_timeout_first;
 	else
 		timeout_ms = eapol_key_timeout_subseq;
+
 	if (pairwise && ctr == 1 && !(key_info & WPA_KEY_INFO_MIC))
 		/* 4路握手中的第一个报文 */
 		sm->pending_1_of_4_timeout = 1;
+
 	wpa_printf(MSG_DEBUG, "WPA: Use EAPOL-Key timeout of %u ms (retry "
 		   "counter %d)", timeout_ms, ctr);
 	/* 重传定时器 */
@@ -1506,7 +1541,7 @@ int wpa_auth_sm_event(struct wpa_state_machine *sm, wpa_event event)
 			sm->AuthenticationRequest = TRUE;
 			break;
 		}
-		/* 组播密钥需要更新 */
+		/* wpa_group_update_sta中由组触发组播密钥需要更新 */
 		if (sm->GUpdateStationKeys) {
 			/*
 			 * Reauthentication cancels the pending group key
@@ -2439,6 +2474,8 @@ SM_STATE(WPA_PTK_GROUP, IDLE)
 /*
 REKEYNEGOTIATING : This state is entered when the GTK is to be sent to the Supplicant.
 
+1. 向STA发送gtk
+
 */
 SM_STATE(WPA_PTK_GROUP, REKEYNEGOTIATING)
 {
@@ -2545,6 +2582,9 @@ Figure 11-46—Authenticator state machines, part 3
 */
 SM_STEP(WPA_PTK_GROUP)
 {
+	/* wpa_auth_sta_associated中过来初始化,Init = TRUE
+	   或wpa_auth_sm_event中过来更新组播密钥,PtkGroupInit = TRUE
+	*/
 	if (sm->Init || sm->PtkGroupInit) {
 		SM_ENTER(WPA_PTK_GROUP, IDLE);
 		sm->PtkGroupInit = FALSE;
@@ -2553,6 +2593,7 @@ SM_STEP(WPA_PTK_GROUP)
 		/* GUpdateStationKeys */
 		/* 组中sta全部需要更新wpa_group_setkeys() => wpa_group_update_sta() */
 		if (sm->GUpdateStationKeys ||
+			/* 或WPA1的4路握手完成，需要下发gtk */
 		    (sm->wpa == WPA_VERSION_WPA && sm->PInitAKeys))
 			SM_ENTER(WPA_PTK_GROUP, REKEYNEGOTIATING);
 		break;
@@ -2567,7 +2608,7 @@ SM_STEP(WPA_PTK_GROUP)
 			 (int) dot11RSNAConfigGroupUpdateCount)
 			SM_ENTER(WPA_PTK_GROUP, KEYERROR);
 		/* TimeoutEvt */
-		/* 定时器到 */
+		/* 定时器到，再次发送组播密钥报文 */
 		else if (sm->TimeoutEvt)
 			SM_ENTER(WPA_PTK_GROUP, REKEYNEGOTIATING);
 		break;
@@ -2650,7 +2691,7 @@ static void wpa_group_gtk_init(struct wpa_authenticator *wpa_auth,
 /*
 更新每台STA的组播密钥
 
-@sm		: STA的WPA状态机
+@sm	: STA的WPA状态机
 @ctx	: NULL
 */
 static int wpa_group_update_sta(struct wpa_state_machine *sm, void *ctx)
@@ -2678,6 +2719,7 @@ static int wpa_group_update_sta(struct wpa_state_machine *sm, void *ctx)
 
 	/* 状态机分支函数
 	   此时应该进入SM_STEP(WPA_PTK_GROUP) => case WPA_PTK_GROUP_IDLE
+	   即将密钥下发给STA
 	*/
 	wpa_sm_step(sm);
 	return 0;
@@ -2687,6 +2729,8 @@ static int wpa_group_update_sta(struct wpa_state_machine *sm, void *ctx)
 /*
 SETKEYS : This state is entered if the GTK is to be updated on all Supplicants.
 
+1. 更新gtk
+2. 向所有STA下发密钥
 */
 static void wpa_group_setkeys(struct wpa_authenticator *wpa_auth,
 			      struct wpa_group *group)
@@ -2755,6 +2799,7 @@ static int wpa_group_config_group_keys(struct wpa_authenticator *wpa_auth,
 /*
 SETKEYSDONE : This state is entered if the GTK has been updated on all Supplicants.
 
+向驱动中设置组播密钥
 */
 static int wpa_group_setkeysdone(struct wpa_authenticator *wpa_auth,
 				 struct wpa_group *group)
@@ -2774,14 +2819,20 @@ static int wpa_group_setkeysdone(struct wpa_authenticator *wpa_auth,
 static void wpa_group_sm_step(struct wpa_authenticator *wpa_auth,
 			      struct wpa_group *group)
 {
+	/* wpa_group_init中设置GInit = TRUE */
 	if (group->GInit) {
 		wpa_group_gtk_init(wpa_auth, group);
+	/* wpa_group_gtk_init中设置状态为WPA_GROUP_GTK_INIT */
 	} else if (group->wpa_group_state == WPA_GROUP_GTK_INIT &&
+			/* 并且是AP(或IBSS中的认证者STA) */
 		   group->GTKAuthenticator) {
+		/* GTK初始化完成后将密钥设置到驱动中 */
 		wpa_group_setkeysdone(wpa_auth, group);
+	/* wpa_group_setkeysdone中设置状态为WPA_GROUP_SETKEYSDONE */
 	} else if (group->wpa_group_state == WPA_GROUP_SETKEYSDONE &&
 		   group->GTKReKey) {
 		wpa_group_setkeys(wpa_auth, group);
+	/* wpa_group_setkeys中设置状态为WPA_GROUP_SETKEYS */
 	} else if (group->wpa_group_state == WPA_GROUP_SETKEYS) {
 		if (group->GKeyDoneStations == 0)
 			wpa_group_setkeysdone(wpa_auth, group);
