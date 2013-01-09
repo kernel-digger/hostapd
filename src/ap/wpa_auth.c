@@ -31,6 +31,12 @@
 #include "wpa_auth_i.h"
 #include "wpa_auth_ie.h"
 
+
+#if defined(for_si_locate_variable)
+static struct wpa_state_machine *sm;
+#endif
+
+
 #define STATE_MACHINE_DATA struct wpa_state_machine
 #define STATE_MACHINE_DEBUG_PREFIX "WPA"
 #define STATE_MACHINE_ADDR sm->addr
@@ -136,6 +142,9 @@ static inline int wpa_auth_get_seqnum(struct wpa_authenticator *wpa_auth,
 {
 	if (wpa_auth->cb.get_seqnum == NULL)
 		return -1;
+	/* atheros_get_seqnum
+
+	*/
 	return wpa_auth->cb.get_seqnum(wpa_auth->cb.ctx, addr, idx, seq);
 }
 
@@ -2494,6 +2503,10 @@ SM_STATE(WPA_PTK_GROUP, REKEYNEGOTIATING)
 		return;
 	}
 
+	/* 在SM_STATE(WPA_PTK, PTKINITDONE)中置为TRUE
+	   控制SM_STEP(WPA_PTK_GROUP) => case WPA_PTK_GROUP_IDLE:进入此分支
+	   这里清除标记
+	*/
 	if (sm->wpa == WPA_VERSION_WPA)
 		sm->PInitAKeys = FALSE;
 	sm->TimeoutEvt = FALSE;

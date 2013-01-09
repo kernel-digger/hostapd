@@ -85,6 +85,7 @@ struct wpa_state_machine {
 	/* EAPOLKeyReceived - This variable is set to TRUE
 	when an EAPOL-Key frame is received. */
 	Boolean EAPOLKeyReceived;
+	/* TRUE = 收到的EAPOL-KEY是4路握手报文，wpa_receive()中记录 */
 	Boolean EAPOLKeyPairwise;
 	Boolean EAPOLKeyRequest;
 	/* MICVerified - This variable is set to TRUE
@@ -96,12 +97,14 @@ struct wpa_state_machine {
 	Boolean GUpdateStationKeys;
 	/* ANonce - This variable holds the current nonce to be used if the STA is an Authenticator. */
 	u8 ANonce[WPA_NONCE_LEN];
+	/* STA发来的随机数，在wpa_receive()中保存 */
 	u8 SNonce[WPA_NONCE_LEN];
 	u8 PMK[PMK_LEN];
 	/* PTK - This variable is the current PTK. */
 	struct wpa_ptk PTK;
 	/* 4路握手，收到STA的第2个报文，成功导出PTK后，标记为TRUE */
 	Boolean PTK_valid;
+	/* 4路握手完成后，置为TRUE，标记后续的EAPOL-KEY报文进行加密 */
 	Boolean pairwise_set;
 	int keycount;
 	Boolean Pair;
