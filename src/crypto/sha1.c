@@ -51,6 +51,7 @@ int hmac_sha1_vector(const u8 *key, size_t key_len, size_t num_elem,
 		return -1;
 	}
 
+	/* 大于64字节的计算其20字节的消息认证码 */
         /* if key is longer than 64 bytes reset it to key = SHA1(key) */
         if (key_len > 64) {
 		if (sha1_vector(1, &key, &key_len, tk))
@@ -68,6 +69,7 @@ int hmac_sha1_vector(const u8 *key, size_t key_len, size_t num_elem,
 	 * opad is the byte 0x5c repeated 64 times
 	 * and text is the data being protected */
 
+	/* 补齐到64字节 */
 	/* start out by storing key in ipad */
 	os_memset(k_pad, 0, sizeof(k_pad));
 	os_memcpy(k_pad, key, key_len);
@@ -82,6 +84,7 @@ int hmac_sha1_vector(const u8 *key, size_t key_len, size_t num_elem,
 		_addr[i + 1] = addr[i];
 		_len[i + 1] = len[i];
 	}
+	/* 第1次计算 */
 	if (sha1_vector(1 + num_elem, _addr, _len, mac))
 		return -1;
 
@@ -96,6 +99,7 @@ int hmac_sha1_vector(const u8 *key, size_t key_len, size_t num_elem,
 	_len[0] = 64;
 	_addr[1] = mac;
 	_len[1] = SHA1_MAC_LEN;
+	/* 第2次计算 */
 	return sha1_vector(2, _addr, _len, mac);
 }
 
@@ -154,11 +158,13 @@ int sha1_prf(const u8 *key, size_t key_len, const char *label,
 	while (pos < buf_len) {
 		plen = buf_len - pos;
 		if (plen >= SHA1_MAC_LEN) {
+			/* 每次计算出20字节的SHA1_MAC消息认证码 */
 			if (hmac_sha1_vector(key, key_len, 3, addr, len,
 					     &buf[pos]))
 				return -1;
 			pos += SHA1_MAC_LEN;
 		} else {
+			/* 最后一次剩余plen小于20的时候，只复制plen长度的值 */
 			if (hmac_sha1_vector(key, key_len, 3, addr, len,
 					     hash))
 				return -1;

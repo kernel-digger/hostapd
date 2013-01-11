@@ -3473,6 +3473,13 @@ void wpa_supplicant_event(void *ctx, enum wpa_event_type event,
  * event indication for some of the common events.
  */
 
+/*
+@ctx	: struct hostapd_data *hapd
+@addr	: STA MAC
+@ie	: IE
+@ielen	: IE总长度，含Element ID和Length的2个字节
+@reassoc:
+*/
 static inline void drv_event_assoc(void *ctx, const u8 *addr, const u8 *ie,
 				   size_t ielen, int reassoc)
 {

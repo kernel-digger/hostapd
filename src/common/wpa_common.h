@@ -158,7 +158,7 @@
 /* 是否安装PTK */
 #define WPA_KEY_INFO_INSTALL BIT(6) /* pairwise */
 #define WPA_KEY_INFO_TXRX BIT(6) /* group */
-/* 认证者要求请求者在回应报文中是否需要携带EAPOL-Key帧 */
+/* 认证者要求请求者回应EAPOL-Key帧 */
 #define WPA_KEY_INFO_ACK BIT(7)
 /* 指示该EAPOL-Key帧中是否含有MIC */
 #define WPA_KEY_INFO_MIC BIT(8)
@@ -178,9 +178,11 @@
 #define WPA_KEY_INFO_SMK_MESSAGE BIT(13)
 
 /*
+IEEE Std 802.11-2012, 11.6.2 EAPOL-Key frames
 95个字节
 */
 struct wpa_eapol_key {
+	/* EAPOL_KEY_TYPE_RSN EAPOL_KEY_TYPE_WPA */
 	u8 type;
 	/* Note: key_info, key_length, and key_data_length are unaligned */
 	u8 key_info[2]; /* big endian */
@@ -204,7 +206,10 @@ struct wpa_eapol_key {
  * IEEE Std 802.11i-2004 - 8.5.1.2 Pairwise key hierarchy
  */
 struct wpa_ptk {
+	/* KCK: A key used to integrity-check an EAPOL-Key frame. */
 	u8 kck[16]; /* EAPOL-Key Key Confirmation Key (KCK) */
+	/* KEK: A key used to encrypt the Key Data field in an EAPOL-Key frame.
+	   用来加密GTK IGTK */
 	u8 kek[16]; /* EAPOL-Key Key Encryption Key (KEK) */
 	u8 tk1[16]; /* Temporal Key 1 (TK1) */
 	union {

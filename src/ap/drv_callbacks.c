@@ -43,7 +43,7 @@
 @hapd		: bss数据
 @addr		: STA MAC
 @req_ies	: 关联帧中的IE
-@req_ies_len: IE长度
+@req_ies_len	: IE长度
 @reassoc	: 0 - 关联; 1 - 重关联
 
 */

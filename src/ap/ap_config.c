@@ -264,8 +264,10 @@ static int hostapd_config_read_wpa_psk(const char *fname,
 
 		ok = 0;
 		len = os_strlen(pos);
+		/* 64个字节16进制格式的 */
 		if (len == 64 && hexstr2bin(pos, psk->psk, PMK_LEN) == 0)
 			ok = 1;
+		/* [8, 63]个字节，字符串格式的 */
 		else if (len >= 8 && len < 64) {
 			pbkdf2_sha1(pos, ssid->ssid, ssid->ssid_len,
 				    4096, psk->psk, PMK_LEN);
@@ -584,6 +586,13 @@ const char * hostapd_get_vlan_id_ifname(struct hostapd_vlan *vlan, int vlan_id)
 }
 
 
+/*
+查找一个可以用于STA @addr的PSK
+
+@conf		:
+@addr		: STA MAC
+@prev_psk	:
+*/
 const u8 * hostapd_get_psk(const struct hostapd_bss_config *conf,
 			   const u8 *addr, const u8 *prev_psk)
 {

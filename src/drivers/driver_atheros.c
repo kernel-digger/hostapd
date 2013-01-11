@@ -891,6 +891,8 @@ atheros_new_sta(struct atheros_driver_data *drv, u8 addr[IEEE80211_ADDR_LEN])
 	wpa_hexdump(MSG_MSGDUMP, "atheros req WPS IE",
 		    ie.wps_ie, IEEE80211_MAX_OPT_IE);
 #endif /* ATH_WPS_IE */
+
+	/* 检查从驱动中读上来的IE信息 */
 	iebuf = ie.wpa_ie;
 	/* atheros seems to return some random data if WPA/RSN IE is not set.
 	 * Assume the IE was not included if the IE type is unknown. */
@@ -904,6 +906,7 @@ atheros_new_sta(struct atheros_driver_data *drv, u8 addr[IEEE80211_ADDR_LEN])
 			iebuf[1] = 0;
 	}
 
+	/* IE中带的长度 */
 	ielen = iebuf[1];
 
 #ifdef ATH_WPS_IE
@@ -918,6 +921,7 @@ atheros_new_sta(struct atheros_driver_data *drv, u8 addr[IEEE80211_ADDR_LEN])
 	if (ielen == 0)
 		iebuf = NULL;
 	else
+		/* 加上Element ID和Length的2个字节 */
 		ielen += 2;
 
 no_ie:
@@ -1075,6 +1079,9 @@ atheros_wireless_event_wireless(struct atheros_driver_data *drv,
 }
 
 
+/*
+接收内核发来的netlink消息
+*/
 static void
 atheros_wireless_event_rtm_newlink(void *ctx,
 				   struct ifinfomsg *ifi, u8 *buf, size_t len)

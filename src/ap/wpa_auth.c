@@ -142,9 +142,7 @@ static inline int wpa_auth_get_seqnum(struct wpa_authenticator *wpa_auth,
 {
 	if (wpa_auth->cb.get_seqnum == NULL)
 		return -1;
-	/* atheros_get_seqnum
-
-	*/
+	/* hostapd_wpa_auth_get_seqnum */
 	return wpa_auth->cb.get_seqnum(wpa_auth->cb.ctx, addr, idx, seq);
 }
 
@@ -615,6 +613,10 @@ wpa_auth_sta_init(struct wpa_authenticator *wpa_auth, const u8 *addr)
 }
 
 
+/*
+hostapd_new_assoc_sta() => wpa_auth_sta_associated(hapd->wpa_auth, sta->wpa_sm)
+
+*/
 int wpa_auth_sta_associated(struct wpa_authenticator *wpa_auth,
 			    struct wpa_state_machine *sm)
 {
@@ -1251,6 +1253,17 @@ static void wpa_send_eapol_timeout(void *eloop_ctx, void *timeout_ctx)
 /*
 构造EAPOL-KEY报文
 发送报文
+
+@wpa_auth	:
+@sm		:
+@key_info	:
+@key_rsc	:
+@nonce		:
+@kde		: key data cryptographic encapsulation
+@kde_len	:
+@keyidx		:
+@encr		:
+@force_version	:
 */
 void __wpa_send_eapol(struct wpa_authenticator *wpa_auth,
 		      struct wpa_state_machine *sm, int key_info,
@@ -1299,6 +1312,7 @@ void __wpa_send_eapol(struct wpa_authenticator *wpa_auth,
 	if ((version == WPA_KEY_INFO_TYPE_HMAC_SHA1_AES ||
 	     version == WPA_KEY_INFO_TYPE_AES_128_CMAC) && encr) {
 		pad_len = key_data_len % 8;
+		/* 不是8的倍数 */
 		if (pad_len)
 			pad_len = 8 - pad_len;
 		key_data_len += pad_len + 8;
@@ -1375,6 +1389,9 @@ void __wpa_send_eapol(struct wpa_authenticator *wpa_auth,
 		os_memcpy(pos, kde, kde_len);
 		pos += kde_len;
 
+		/* 补齐的数据以一个0xdd开始
+		   IEEE Std 80211-2012, 11.6.2 EAPOL-Key frames, j) Key Data
+		*/
 		if (pad_len)
 			*pos++ = 0xdd;
 
@@ -2488,6 +2505,7 @@ REKEYNEGOTIATING : This state is entered when the GTK is to be sent to the Suppl
 */
 SM_STATE(WPA_PTK_GROUP, REKEYNEGOTIATING)
 {
+	/* receive sequence counter */
 	u8 rsc[WPA_KEY_RSC_LEN];
 	struct wpa_group *gsm = sm->group;
 	u8 *kde, *pos, hdr[2];
@@ -2517,6 +2535,7 @@ SM_STATE(WPA_PTK_GROUP, REKEYNEGOTIATING)
 	wpa_auth_logger(sm->wpa_auth, sm->addr, LOGGER_DEBUG,
 			"sending 1/2 msg of Group Key Handshake");
 
+	/* 设置key data */
 	if (sm->wpa == WPA_VERSION_WPA2) {
 		kde_len = 2 + RSN_SELECTOR_LEN + 2 + gsm->GTK_len +
 			ieee80211w_kde_len(sm);
@@ -2525,7 +2544,12 @@ SM_STATE(WPA_PTK_GROUP, REKEYNEGOTIATING)
 			return;
 
 		pos = kde;
+		/* IEEE Std 802.11-2012, Figure 11-31 - GTK KDE format */
+		/* KeyID(0, 1, 2, or 3): bits 0-1
+		   Tx: bit 2
+		*/
 		hdr[0] = gsm->GN & 0x03;
+		/* Reserved(0) */
 		hdr[1] = 0;
 		pos = wpa_add_kde(pos, RSN_KEY_DATA_GROUPKEY, hdr, 2,
 				  gsm->GTK[gsm->GN - 1], gsm->GTK_len);

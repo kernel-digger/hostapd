@@ -53,7 +53,13 @@ typedef enum hostap_security_policy {
 	SECURITY_WPA = 4
 } secpolicy;
 
+/*
+ssid相关数据
+*/
 struct hostapd_ssid {
+	/* ssid名称
+	   在hostapd_config_read()从配置文件中读取
+	*/
 	char ssid[HOSTAPD_MAX_SSID_LEN + 1];
 	size_t ssid_len;
 	int ssid_set;
@@ -62,7 +68,13 @@ struct hostapd_ssid {
 	secpolicy security_policy;
 
 	struct hostapd_wpa_psk *wpa_psk;
+	/* 字符串密钥，[8, 63]个字节
+	   在hostapd_config_read()从配置文件中读取
+	*/
 	char *wpa_passphrase;
+	/* 含有PSK的文件名称
+	   在hostapd_config_read()从配置文件中读取
+	*/
 	char *wpa_psk_file;
 
 	struct hostapd_wep_keys wep;
@@ -99,8 +111,16 @@ struct hostapd_vlan {
 #define PMK_LEN 32
 struct hostapd_wpa_psk {
 	struct hostapd_wpa_psk *next;
+	/* 1表示可以用于任何STA */
 	int group;
+	/* 在hostapd_config_read()从配置文件中读取
+	   在hostapd_derive_psk()计算
+	   在hostapd_config_read_wpa_psk()读取计算
+	*/
 	u8 psk[PMK_LEN];
+	/* 0或者指定的STA MAC
+	   参考hostapd.wpa_psk示例文件
+	*/
 	u8 addr[ETH_ALEN];
 };
 
@@ -182,6 +202,7 @@ struct hostapd_bss_config {
 	struct hostapd_radius_servers *radius;
 	int acct_interim_interval;
 
+	/* 内嵌ssid结构 */
 	struct hostapd_ssid ssid;
 
 	char *eap_req_id_text; /* optional displayable message sent with

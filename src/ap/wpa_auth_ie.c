@@ -382,10 +382,14 @@ int wpa_auth_gen_wpa_ie(struct wpa_authenticator *wpa_auth)
 u8 * wpa_add_kde(u8 *pos, u32 kde, const u8 *data, size_t data_len,
 		 const u8 *data2, size_t data2_len)
 {
+	/* Type(0xdd) */
 	*pos++ = WLAN_EID_VENDOR_SPECIFIC;
+	/* ³¤¶È */
 	*pos++ = RSN_SELECTOR_LEN + data_len + data2_len;
+	/* OUI */
 	RSN_SELECTOR_PUT(pos, kde);
 	pos += RSN_SELECTOR_LEN;
+	/* Data */
 	os_memcpy(pos, data, data_len);
 	pos += data_len;
 	if (data2) {

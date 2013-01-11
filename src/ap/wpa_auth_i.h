@@ -27,6 +27,10 @@ struct wpa_stsl_negotiation {
 };
 
 
+/*
+每个STA的WPA认证状态机
+由wpa_auth_sta_init()初始化
+*/
 struct wpa_state_machine {
 	/* 所关联的bss的认证者结构 */
 	struct wpa_authenticator *wpa_auth;
@@ -99,6 +103,9 @@ struct wpa_state_machine {
 	u8 ANonce[WPA_NONCE_LEN];
 	/* STA发来的随机数，在wpa_receive()中保存 */
 	u8 SNonce[WPA_NONCE_LEN];
+	/* pairwise master key
+	   在SM_STATE(WPA_PTK, INITPMK)或SM_STATE(WPA_PTK, INITPSK)中设置
+	*/
 	u8 PMK[PMK_LEN];
 	/* PTK - This variable is the current PTK. */
 	struct wpa_ptk PTK;
@@ -190,6 +197,7 @@ struct wpa_group {
 	   表示更新gtk，然后向所有STA下发新密钥
 	*/
 	Boolean GTKReKey;
+	/* 函数wpa_group_set_key_len()设置 */
 	int GTK_len;
 	/* GN, GM - These are the current key indices for GTKs.
 	Swap(GM, GN) means that the global key index in GN is swapped with
