@@ -67,6 +67,12 @@ struct hostapd_ssid {
 	char vlan[IFNAMSIZ + 1];
 	secpolicy security_policy;
 
+	/* 在hostapd_setup_wpa_psk()中设置
+	   由wpa_passphrase导出的
+	   从配置文件中读取的
+	   所有STA都能使用的
+	   指定了STA MAC的
+	*/
 	struct hostapd_wpa_psk *wpa_psk;
 	/* 字符串密钥，[8, 63]个字节
 	   在hostapd_config_read()从配置文件中读取
@@ -113,9 +119,9 @@ struct hostapd_wpa_psk {
 	struct hostapd_wpa_psk *next;
 	/* 1表示可以用于任何STA */
 	int group;
-	/* 在hostapd_config_read()从配置文件中读取
-	   在hostapd_derive_psk()计算
-	   在hostapd_config_read_wpa_psk()读取计算
+	/* 在hostapd_config_read()从配置文件中读取	wpa_psk
+	   在hostapd_derive_psk()计算			wpa_passphrase
+	   在hostapd_config_read_wpa_psk()读取计算	wpa_psk_file	
 	*/
 	u8 psk[PMK_LEN];
 	/* 0或者指定的STA MAC

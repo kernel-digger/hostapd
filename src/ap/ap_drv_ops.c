@@ -424,6 +424,7 @@ int hostapd_get_seqnum(const char *ifname, struct hostapd_data *hapd,
 	if (hapd->driver == NULL || hapd->driver->get_seqnum == NULL)
 		return 0;
 	/* atheros_get_seqnum
+	   i802_get_seqnum
 	*/
 	return hapd->driver->get_seqnum(ifname, hapd->drv_priv, addr, idx,
 					seq);
